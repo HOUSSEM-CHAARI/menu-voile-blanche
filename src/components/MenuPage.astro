@@ -1,11 +1,15 @@
 ---
-import WaveLine from './brand/WaveLine.astro'
 import Footer from './Footer.astro'
 import Hero from './Hero.astro'
+import CategorySection from './menu/CategorySection.astro'
+import DishDetail from './menu/DishDetail.astro'
+import DishSheet from './menu/DishSheet.astro'
+import MenuNav from './menu/MenuNav.astro'
+import SignatureStrip from './menu/SignatureStrip.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
+import { dishView } from '../lib/dish-view'
 import { pick, ui } from '../lib/i18n'
 import { getPublicMenu } from '../lib/menu'
-import { formatPrice } from '../lib/price'
 import { restaurantInfo } from '../lib/restaurant'
 import type { Locale } from '../lib/types'
 
@@ -17,62 +21,106 @@ const { locale } = Astro.props
 const t = ui(locale)
 const menu = await getPublicMenu()
 const info = restaurantInfo(menu.settings, locale)
+
+const sections = menu.sections.map(({ category, items }) => ({
+  slug: category.slug,
+  title: pick(locale, { fr: category.nameFr, ar: category.nameAr, en: category.nameEn }),
+  image: category.image ?? null,
+  layout: category.layout,
+  dishes: items.map((item) => dishView(item, locale)),
+}))
+const allDishes = sections.flatMap((section) => section.dishes)
+const signatures = menu.signatures.map((item) => dishView(item, locale))
 ---
 
 <BaseLayout locale={locale}>
   <Hero locale={locale} info={info} />
-  <main id="menu" class="wrap">
-    {menu.sections.map(({ category, items }, index) => {
-      const title = pick(locale, { fr: category.nameFr, ar: category.nameAr, en: category.nameEn })
-      return (
-        <section id={category.slug} class="section">
-          {index > 0 && <WaveLine />}
-          <h2 lang={title.lang}>{title.text}</h2>
-          <ul role="list">
-            {items.map((item) => {
-              const name = pick(locale, { fr: item.nameFr, ar: item.nameAr, en: item.nameEn })
-              return (
-                <li id={item.slug} data-dish>
-                  <span lang={name.lang} data-dish-name>
-                    {name.text}
-                  </span>
-                  <span class="price" data-price>
-                    {formatPrice(item.price, locale, item.priceUnit)}
-                  </span>
-                  {!item.isAvailable && <span> · {t.soldOut}</span>}
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )
-    })}
+  <main id="menu">
+    <SignatureStrip dishes={signatures} locale={locale} />
+    <div class="menu-layout wrap" data-menu-main>
+      <MenuNav
+        locale={locale}
+        categories={sections.map(({ slug, title }) => ({ slug, name: title }))}
+      />
+      <div class="menu-sections">
+        <p
+          class="results"
+          role="status"
+          data-results
+          data-zero={t.results(0)}
+          data-one={t.results(1)}
+          data-many={t.results(2).replace('2', '{n}')}
+        ></p>
+        <div class="no-results" data-no-results hidden>
+          <p>{t.noResults}</p>
+          <button type="button" class="show-all" data-show-all>
+            {t.showAll}
+          </button>
+        </div>
+        {sections.map((section, index) => (
+          <CategorySection {...section} locale={locale} first={index === 0} />
+        ))}
+      </div>
+    </div>
   </main>
   <Footer locale={locale} info={info} />
+  <DishSheet locale={locale} />
+  {allDishes.map((dish) => (
+    <DishDetail dish={dish} locale={locale} />
+  ))}
 </BaseLayout>
 
+<script>
+  import '../scripts/menu'
+</script>
+
 <style>
-  #menu {
+  .menu-sections {
     max-width: var(--measure);
+    min-width: 0;
   }
-  .section {
+  .results:empty {
+    display: none;
+  }
+  .results {
+    padding-block: var(--space-4) 0;
+    color: var(--mist);
+    font-weight: 600;
+  }
+  .no-results {
     display: grid;
+    justify-items: start;
     gap: var(--space-4);
     padding-block: var(--space-6);
   }
-  h2 {
-    font-family: var(--font-serif);
-    font-weight: var(--w-title);
-    font-size: var(--text-title);
-    line-height: var(--leading-tight);
+  .no-results[hidden] {
+    display: none;
   }
-  li {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding-block: var(--space-2);
-    font-family: var(--font-serif);
-    font-weight: var(--w-dish);
-    font-size: var(--text-dish);
+  .show-all {
+    min-height: var(--tap);
+    padding-inline: var(--space-5);
+    border: 1px solid var(--shutter);
+    border-radius: 999px;
+    background: none;
+    color: var(--shutter);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .menu-layout :global(.is-searching .category-wave),
+  :global(.is-searching) :global(.category-wave) {
+    display: none;
+  }
+  :global(html.sheet-open) {
+    overflow: hidden;
+  }
+
+  @media (min-width: 64rem) {
+    .menu-layout {
+      display: grid;
+      grid-template-columns: 16rem minmax(0, var(--measure));
+      justify-content: center;
+      gap: var(--space-7);
+      align-items: start;
+    }
   }
 </style>

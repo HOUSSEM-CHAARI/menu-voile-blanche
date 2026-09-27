@@ -1,0 +1,22 @@
+---
+import type { PriceParts } from '../../lib/price'
+
+interface Props {
+  price: PriceParts
+  class?: string
+}
+
+const { price, class: className } = Astro.props
+---
+
+<span class:list={['price', className]} data-price>
+  {price.amount}&nbsp;{price.currency}
+  {price.per && <span class="price-per"> / {price.per.replace(' ', ' ')}</span>}
+</span>
+
+<style>
+  .price-per {
+    font-weight: 400;
+    color: var(--mist);
+  }
+</style>

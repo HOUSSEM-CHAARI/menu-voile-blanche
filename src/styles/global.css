@@ -247,6 +247,11 @@ a {
   color: var(--abyss);
 }
 
+/* Components set their own display; hidden must always win. */
+[hidden] {
+  display: none !important;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

@@ -1,0 +1,96 @@
+---
+import SailPlaceholder from './SailPlaceholder.astro'
+import type { LocalizedText } from '../../lib/i18n'
+import type { ImageMeta, ImageVariant } from '../../lib/types'
+
+interface Props {
+  image: ImageMeta | null
+  alt: LocalizedText
+  /** `sizes` attribute: how wide the image is displayed. */
+  sizes: string
+  /** Eager for images in the first screen, lazy otherwise. */
+  priority?: boolean
+  /** Name shown on the placeholder when there is no photo. */
+  placeholderName?: LocalizedText
+  placeholderCaption?: string
+  /** Small label on temporary stock photos. */
+  illustrationLabel?: string | null
+  class?: string
+}
+
+const {
+  image,
+  alt,
+  sizes,
+  priority = false,
+  placeholderName,
+  placeholderCaption,
+  illustrationLabel,
+  class: className,
+} = Astro.props
+
+const srcset = (variants: ImageVariant[]) => variants.map((v) => `${v.src} ${v.width}w`).join(', ')
+const fallback = image?.jpg.at(-2) ?? image?.jpg.at(-1)
+---
+
+{image && fallback ? (
+  <figure class:list={['dish-image', className]}>
+    <picture>
+      {image.avif.length > 0 && (
+        <source type="image/avif" srcset={srcset(image.avif)} sizes={sizes} />
+      )}
+      {image.webp.length > 0 && (
+        <source type="image/webp" srcset={srcset(image.webp)} sizes={sizes} />
+      )}
+      <img
+        src={fallback.src}
+        srcset={srcset(image.jpg)}
+        sizes={sizes}
+        width={image.width}
+        height={image.height}
+        alt={alt.text}
+        lang={alt.lang}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding={priority ? 'sync' : 'async'}
+        fetchpriority={priority ? 'high' : 'auto'}
+        style={`background-image:url(${image.lqip})`}
+      />
+    </picture>
+    {illustrationLabel && <figcaption class="illustration">{illustrationLabel}</figcaption>}
+  </figure>
+) : (
+  <SailPlaceholder
+    class={className}
+    name={placeholderName?.text}
+    lang={placeholderName?.lang}
+    caption={placeholderCaption}
+  />
+)}
+
+<style>
+  .dish-image {
+    position: relative;
+    margin: 0;
+  }
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--seaglass);
+  }
+  .illustration {
+    position: absolute;
+    inset-block-end: var(--space-2);
+    inset-inline-start: var(--space-2);
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: rgb(13 36 54 / 0.72);
+    color: var(--foam);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+</style>

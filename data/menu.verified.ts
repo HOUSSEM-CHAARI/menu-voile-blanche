@@ -7,11 +7,20 @@
  *   `needsOwnerReview`. All English text, all descriptions, all Arabic category names and any
  *   Arabic text that is not on the printed menu are drafts for the owner to approve.
  */
-import type { ItemOption, Kind, Localized, LocalizedList, PriceUnit, Tag } from '../src/lib/types'
+import type {
+  CategoryLayout,
+  ItemOption,
+  Kind,
+  Localized,
+  LocalizedList,
+  PriceUnit,
+  Tag,
+} from '../src/lib/types'
 
 export interface VerifiedCategory {
   slug: string
   name: Localized
+  layout?: CategoryLayout
 }
 
 export interface VerifiedItem {
@@ -50,7 +59,7 @@ export const verifiedCategories: VerifiedCategory[] = [
   { slug: 'viandes', name: { fr: 'Viandes', ar: 'اللحوم', en: 'Meat' } },
   { slug: 'volailles', name: { fr: 'Volailles', ar: 'الدواجن', en: 'Poultry' } },
   { slug: 'desserts', name: { fr: 'Desserts', ar: 'التحلية', en: 'Desserts' } },
-  { slug: 'boissons', name: { fr: 'Boissons', ar: 'المشروبات', en: 'Drinks' } },
+  { slug: 'boissons', name: { fr: 'Boissons', ar: 'المشروبات', en: 'Drinks' }, layout: 'compact' },
 ]
 
 const FRUITS_DE_MER_EN_SAUCE: Localized = {

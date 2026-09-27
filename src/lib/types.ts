@@ -30,6 +30,9 @@ export type Kind = (typeof KINDS)[number]
 export const PRICE_UNITS = ['item', 'per100g'] as const
 export type PriceUnit = (typeof PRICE_UNITS)[number]
 
+export const CATEGORY_LAYOUTS = ['standard', 'compact'] as const
+export type CategoryLayout = (typeof CATEGORY_LAYOUTS)[number]
+
 export const IMAGE_SOURCES = ['owner', 'temporary'] as const
 export type ImageSource = (typeof IMAGE_SOURCES)[number]
 

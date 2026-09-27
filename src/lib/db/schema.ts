@@ -1,5 +1,6 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type {
+  CategoryLayout,
   ImageMeta,
   ImageSource,
   ItemOption,
@@ -27,6 +28,8 @@ export const categories = sqliteTable('categories', {
   nameAr: text('name_ar'),
   nameEn: text('name_en'),
   image: text('image', { mode: 'json' }).$type<ImageMeta>(),
+  /** "compact": a plain name-and-price list without photos, e.g. drinks. */
+  layout: text('layout').$type<CategoryLayout>().notNull().default('standard'),
   sortOrder: integer('sort_order').notNull().default(0),
   isVisible: integer('is_visible', { mode: 'boolean' }).notNull().default(true),
   /** Field keys whose content is a draft awaiting the owner's approval. */

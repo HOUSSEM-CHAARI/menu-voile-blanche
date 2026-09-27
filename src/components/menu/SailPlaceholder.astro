@@ -1,0 +1,57 @@
+---
+/** Shown wherever a dish has no photo yet: never a broken image, never another dish's photo. */
+import WaveLine from '../brand/WaveLine.astro'
+
+interface Props {
+  name?: string | undefined
+  lang?: string | undefined
+  caption?: string | undefined
+  class?: string | undefined
+}
+
+const { name, lang, caption, class: className } = Astro.props
+---
+
+<div class:list={['placeholder', className]} role="img" aria-label={caption}>
+  <svg class="placeholder-sail" viewBox="0 0 96 120" aria-hidden="true">
+    <use href="#vb-sail"></use>
+  </svg>
+  {name && (
+    <p class="placeholder-name" lang={lang} aria-hidden="true">
+      {name}
+    </p>
+  )}
+  <WaveLine class="placeholder-wave" />
+</div>
+
+<style>
+  .placeholder {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--space-3);
+    aspect-ratio: 4 / 3;
+    padding: var(--space-4);
+    background: var(--seaglass);
+    color: var(--abyss);
+    text-align: center;
+    overflow: hidden;
+  }
+  .placeholder-sail {
+    width: clamp(2rem, 18%, 4.5rem);
+    height: auto;
+    aspect-ratio: 96 / 120;
+    color: rgb(13 36 54 / 0.55);
+  }
+  .placeholder-name {
+    max-width: 22ch;
+    font-family: var(--font-serif);
+    font-weight: var(--w-dish);
+    font-size: clamp(1rem, 0.9rem + 0.6vw, 1.25rem);
+    line-height: var(--leading-tight);
+    color: rgb(13 36 54 / 0.8);
+  }
+  :global(.placeholder-wave) {
+    color: rgb(13 36 54 / 0.35) !important;
+  }
+</style>

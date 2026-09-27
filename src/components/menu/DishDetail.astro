@@ -1,0 +1,136 @@
+---
+/** Full dish detail, rendered into a <template> and shown in the bottom sheet on demand. */
+import Badges from './Badges.astro'
+import DishImage from './DishImage.astro'
+import PriceTag from './PriceTag.astro'
+import type { DishView } from '../../lib/dish-view'
+import { ui } from '../../lib/i18n'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  dish: DishView
+  locale: Locale
+}
+
+const { dish, locale } = Astro.props
+const t = ui(locale)
+---
+
+<template id={`dish-tpl-${dish.slug}`} data-dish-template={dish.slug} data-title={dish.name.text}>
+  <DishImage
+    class="detail-photo"
+    image={dish.image}
+    alt={dish.imageAlt}
+    sizes="(min-width: 48rem) 36rem, 100vw"
+    placeholderName={dish.name}
+    illustrationLabel={dish.imageSource === 'temporary' ? t.photoIllustration : null}
+  />
+  <div class="detail">
+    <div class="detail-head">
+      <h2 id="sheet-title" tabindex="-1" lang={dish.name.lang}>
+        {dish.name.text}
+      </h2>
+      <PriceTag price={dish.price} class="detail-price" />
+    </div>
+    <Badges dish={dish} locale={locale} />
+    {dish.description && (
+      <p class="detail-description" lang={dish.description.lang}>
+        {dish.description.text}
+      </p>
+    )}
+    {dish.options.map((option) => (
+      <div class="detail-block">
+        <h3 lang={option.label.lang}>{option.label.text}</h3>
+        <ul role="list" class="choices">
+          {option.choices.map((choice) => (
+            <li lang={choice.lang}>{choice.text}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+    {dish.includes.items.length > 0 && (
+      <div class="detail-block">
+        <h3>{t.includes}</h3>
+        <ul class="includes" lang={dish.includes.lang}>
+          {dish.includes.items.map((entry) => (
+            <li>{entry}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {dish.note && (
+      <p class="detail-note" lang={dish.note.lang}>
+        {dish.note.text}
+      </p>
+    )}
+  </div>
+</template>
+
+<style>
+  .detail-photo {
+    width: 100%;
+  }
+  .detail {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--gutter) var(--space-6);
+  }
+  .detail-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: 1.75rem;
+    line-height: var(--leading-tight);
+  }
+  h2:focus {
+    outline: none;
+  }
+  .detail-price {
+    font-size: 1.25rem;
+  }
+  .detail-description {
+    color: var(--mist);
+    font-size: 1.0625rem;
+  }
+  .detail-block {
+    display: grid;
+    gap: var(--space-2);
+  }
+  h3 {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--mist);
+  }
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+  }
+  .choices li {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--foam);
+  }
+  .includes {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding-inline-start: 1.25rem;
+  }
+  .includes li::marker {
+    color: var(--sand);
+  }
+  .detail-note {
+    padding: var(--space-3) var(--space-4);
+    border-inline-start: 2px solid var(--sand);
+    background: var(--foam);
+  }
+</style>

@@ -33,6 +33,7 @@ const preload =
       <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />
     ))}
     <script is:inline>
+      document.documentElement.classList.add('js')
       // The hero animation plays once per visit, not on every language switch.
       try {
         if (sessionStorage.getItem('vb-seen')) document.documentElement.classList.add('seen')

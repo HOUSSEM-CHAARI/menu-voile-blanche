@@ -1,0 +1,176 @@
+---
+/**
+ * The dish detail sheet. A native modal <dialog>: focus stays inside while it is open,
+ * the page behind is inert. Closes with Esc, the close button, a tap outside,
+ * a swipe down, or the browser's back button (see src/scripts/menu.ts).
+ */
+import Icon from '../Icon.astro'
+import { ui } from '../../lib/i18n'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  locale: Locale
+}
+
+const t = ui(Astro.props.locale)
+---
+
+<dialog class="sheet" aria-labelledby="sheet-title" data-sheet>
+  <div class="sheet-panel" data-sheet-panel>
+    <div class="sheet-bar">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <button type="button" class="sheet-button" data-sheet-share>
+        <Icon name="share" />
+        <span class="sr-only">{t.share}</span>
+      </button>
+      <button type="button" class="sheet-button" data-sheet-close>
+        <Icon name="close" />
+        <span class="sr-only">{t.close}</span>
+      </button>
+    </div>
+    <div class="sheet-content" data-sheet-content></div>
+    <p class="sheet-toast" role="status" data-sheet-toast data-copied={t.linkCopied}></p>
+  </div>
+</dialog>
+
+<style>
+  .sheet {
+    width: 100%;
+    max-width: 36rem;
+    max-height: 100dvh;
+    margin: auto auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--abyss);
+    overflow: visible;
+  }
+  .sheet::backdrop {
+    background: rgb(13 36 54 / 0.45);
+  }
+  .sheet-panel {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: min(92dvh, 52rem);
+    border-radius: 14px 14px 0 0;
+    background: var(--sail);
+    box-shadow: 0 -12px 40px rgb(13 36 54 / 0.2);
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+  .sheet-bar {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    pointer-events: none;
+  }
+  .sheet-handle {
+    position: absolute;
+    inset-block-start: 6px;
+    inset-inline-start: 50%;
+    width: 2.5rem;
+    height: 4px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.85);
+    box-shadow: 0 0 0 1px rgb(13 36 54 / 0.15);
+    translate: -50% 0;
+  }
+  :global([dir='rtl']) .sheet-handle {
+    translate: 50% 0;
+  }
+  .sheet-button {
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.92);
+    color: var(--abyss);
+    box-shadow: 0 1px 4px rgb(13 36 54 / 0.18);
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .sheet-button:hover {
+    color: var(--shutter);
+  }
+  .sheet-content {
+    grid-row: 1 / -1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .sheet-toast {
+    position: absolute;
+    inset-block-end: var(--space-4);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    background: var(--abyss);
+    color: var(--foam);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  :global([dir='rtl']) .sheet-toast {
+    translate: 50% 0;
+  }
+  .sheet-toast:not(:empty) {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet[open] .sheet-panel {
+      animation: sheet-up 0.24s var(--ease-out);
+    }
+    .sheet[open]::backdrop {
+      animation: fade-in 0.24s ease-out;
+    }
+    .sheet.is-closing .sheet-panel {
+      animation: sheet-down 0.18s ease-in forwards;
+    }
+    .sheet.is-closing::backdrop {
+      animation: fade-out 0.18s ease-in forwards;
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes sheet-down {
+    to {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .sheet {
+      margin: auto;
+    }
+    .sheet-panel {
+      border-radius: 14px;
+      max-height: min(88dvh, 52rem);
+    }
+    .sheet-handle {
+      display: none;
+    }
+  }
+</style>

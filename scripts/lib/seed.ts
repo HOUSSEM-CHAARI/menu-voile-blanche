@@ -33,6 +33,7 @@ export async function seed({ force = false } = {}): Promise<SeedResult> {
         nameFr: category.name.fr,
         nameAr: orNull(category.name.ar),
         nameEn: orNull(category.name.en),
+        layout: category.layout ?? 'standard',
         sortOrder: (index + 1) * 10,
         isVisible: true,
         draftFields: ['nameAr', 'nameEn'],
