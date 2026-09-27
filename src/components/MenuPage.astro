@@ -11,6 +11,7 @@ import { dishView } from '../lib/dish-view'
 import { pick, ui } from '../lib/i18n'
 import { getPublicMenu } from '../lib/menu'
 import { restaurantInfo } from '../lib/restaurant'
+import { alternates, restaurantJsonLd, siteUrl } from '../lib/seo'
 import type { Locale } from '../lib/types'
 
 interface Props {
@@ -30,13 +31,29 @@ const sections = menu.sections.map(({ category, items }) => ({
   dishes: items.map((item) => dishView(item, locale)),
 }))
 const allDishes = sections.flatMap((section) => section.dishes)
+const base = siteUrl(menu.settings)
+const jsonLd = restaurantJsonLd({
+  settings: menu.settings,
+  locale,
+  base,
+  tagline: info.tagline.text,
+  address: info.address.text,
+  sections: sections.map(({ title, dishes }) => ({ title, dishes })),
+})
+
 // Signatures with a photo lead the strip; the rest keep their menu order.
 const signatures = menu.signatures
   .map((item) => dishView(item, locale))
   .sort((a, b) => Number(b.image !== null) - Number(a.image !== null))
 ---
 
-<BaseLayout locale={locale}>
+<BaseLayout
+  locale={locale}
+  canonical={`${base}/${locale}`}
+  alternates={alternates(base)}
+  ogImage={`${base}/og/${locale}.png`}
+  jsonLd={jsonLd}
+>
   <Hero locale={locale} info={info} />
   <main id="menu">
     <SignatureStrip dishes={signatures} locale={locale} />

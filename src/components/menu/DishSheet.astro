@@ -28,7 +28,9 @@ const t = ui(Astro.props.locale)
         <span class="sr-only">{t.close}</span>
       </button>
     </div>
-    <div class="sheet-content" data-sheet-content></div>
+    {/* Focusable so keyboard users can scroll long dish details (axe: scrollable-region-focusable). */}
+    {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex */}
+    <div class="sheet-content" tabindex="0" data-sheet-content></div>
     <p class="sheet-toast" role="status" data-sheet-toast data-copied={t.linkCopied}></p>
   </div>
 </dialog>
@@ -102,6 +104,7 @@ const t = ui(Astro.props.locale)
   }
   .sheet-content {
     grid-row: 1 / -1;
+    outline-offset: -3px;
     overflow-y: auto;
     overscroll-behavior: contain;
   }

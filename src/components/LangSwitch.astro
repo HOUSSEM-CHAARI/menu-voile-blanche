@@ -59,7 +59,13 @@ const t = ui(locale)
     min-height: var(--tap);
     padding-inline: var(--space-2);
     color: var(--abyss);
-    font-family: var(--font-sans);
+    /* Each label is in its own script: the system font avoids downloading another page's fonts. */
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
     font-size: 0.9375rem;
     font-weight: 600;
     letter-spacing: 0.02em;

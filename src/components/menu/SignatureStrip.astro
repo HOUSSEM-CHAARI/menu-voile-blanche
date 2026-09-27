@@ -27,8 +27,9 @@ const t = ui(locale)
             class="signature-photo"
             image={dish.image}
             alt={dish.imageAlt}
-            sizes="(min-width: 64rem) 17rem, (min-width: 48rem) 30vw, 72vw"
-            priority={index < 2}
+            sizes="(min-width: 64rem) 17rem, min(72vw, 17rem)"
+            priority={index === 0}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
             illustrationLabel={dish.imageSource === 'temporary' ? t.photoIllustration : null}
           />
           <div class="signature-body">

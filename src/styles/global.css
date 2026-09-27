@@ -49,9 +49,9 @@
   font-weight: 500;
   font-display: swap;
   unicode-range:
-    U+0020-007E, U+00A0, U+00AB, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D, U+0670,
-    U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014, U+2026, U+202F,
-    U+FD3E-FD3F;
+    U+0020-007E, U+00A0, U+00AB, U+00B7, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D,
+    U+0670, U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014,
+    U+2018-2019, U+201C-201D, U+2022, U+2026, U+202F, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Noto Naskh Arabic';
@@ -59,9 +59,9 @@
   font-weight: 700;
   font-display: swap;
   unicode-range:
-    U+0020-007E, U+00A0, U+00AB, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D, U+0670,
-    U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014, U+2026, U+202F,
-    U+FD3E-FD3F;
+    U+0020-007E, U+00A0, U+00AB, U+00B7, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D,
+    U+0670, U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014,
+    U+2018-2019, U+201C-201D, U+2022, U+2026, U+202F, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Voile Sans Arabic';
@@ -69,9 +69,9 @@
   font-weight: 400;
   font-display: swap;
   unicode-range:
-    U+0020-007E, U+00A0, U+00AB, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D, U+0670,
-    U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014, U+2026, U+202F,
-    U+FD3E-FD3F;
+    U+0020-007E, U+00A0, U+00AB, U+00B7, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D,
+    U+0670, U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014,
+    U+2018-2019, U+201C-201D, U+2022, U+2026, U+202F, U+FD3E-FD3F;
 }
 @font-face {
   font-family: 'Voile Sans Arabic';
@@ -79,9 +79,9 @@
   font-weight: 600;
   font-display: swap;
   unicode-range:
-    U+0020-007E, U+00A0, U+00AB, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D, U+0670,
-    U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014, U+2026, U+202F,
-    U+FD3E-FD3F;
+    U+0020-007E, U+00A0, U+00AB, U+00B7, U+00BB, U+060C, U+061B, U+061F, U+0621-0652, U+0660-066D,
+    U+0670, U+067E, U+0686, U+06A4, U+06AF, U+06CC, U+200C-200F, U+2010-2011, U+2013-2014,
+    U+2018-2019, U+201C-201D, U+2022, U+2026, U+202F, U+FD3E-FD3F;
 }
 
 /* Local fallbacks sized like the web fonts, so the swap does not move the layout. */

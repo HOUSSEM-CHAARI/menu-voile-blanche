@@ -25,7 +25,9 @@
     "test:e2e": "playwright test",
     "screenshots": "node --env-file-if-exists=.env --import tsx scripts/screenshots.ts",
     "docs:content": "node --import tsx scripts/content-changes.ts",
-    "db:photos": "node --env-file-if-exists=.env --import tsx scripts/photos.ts"
+    "db:photos": "node --env-file-if-exists=.env --import tsx scripts/photos.ts",
+    "assets:icons": "node --import tsx scripts/assets/build-icons.ts",
+    "lighthouse": "node --import tsx scripts/lighthouse.ts"
   },
   "dependencies": {
     "@astrojs/node": "11.1.6",
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@types/node": "24.19.0",

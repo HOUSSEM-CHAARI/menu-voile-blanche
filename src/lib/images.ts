@@ -11,7 +11,7 @@ import type { ImageMeta, ImageVariant } from './types'
 export type ImageKind = 'dish' | 'cover'
 
 const SPECS: Record<ImageKind, { ratio: number; widths: number[] }> = {
-  dish: { ratio: 4 / 3, widths: [160, 320, 640, 960, 1280] },
+  dish: { ratio: 4 / 3, widths: [160, 320, 480, 640, 960, 1280] },
   cover: { ratio: 16 / 9, widths: [640, 960, 1280, 1600] },
 }
 

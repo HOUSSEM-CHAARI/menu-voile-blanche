@@ -10,6 +10,8 @@ interface Props {
   sizes: string
   /** Eager for images in the first screen, lazy otherwise. */
   priority?: boolean
+  /** Only the likely LCP image should be "high". */
+  fetchPriority?: 'high' | 'auto'
   /** Name shown on the placeholder when there is no photo. */
   placeholderName?: LocalizedText
   placeholderCaption?: string
@@ -23,6 +25,7 @@ const {
   alt,
   sizes,
   priority = false,
+  fetchPriority = 'auto',
   placeholderName,
   placeholderCaption,
   illustrationLabel,
@@ -52,7 +55,7 @@ const fallback = image?.jpg.at(-2) ?? image?.jpg.at(-1)
         lang={alt.lang}
         loading={priority ? 'eager' : 'lazy'}
         decoding={priority ? 'sync' : 'async'}
-        fetchpriority={priority ? 'high' : 'auto'}
+        fetchpriority={fetchPriority}
         style={`background-image:url(${image.lqip})`}
       />
     </picture>

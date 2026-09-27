@@ -12,7 +12,12 @@ interface Props {
 const { name, lang, caption, class: className } = Astro.props
 ---
 
-<div class:list={['placeholder', className]} role="img" aria-label={caption}>
+<div
+  class:list={['placeholder', className]}
+  role={caption ? 'img' : undefined}
+  aria-label={caption}
+  aria-hidden={caption ? undefined : 'true'}
+>
   <svg class="placeholder-sail" viewBox="0 0 96 120" aria-hidden="true">
     <use href="#vb-sail"></use>
   </svg>

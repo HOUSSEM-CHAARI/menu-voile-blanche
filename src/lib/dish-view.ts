@@ -18,6 +18,8 @@ export interface DishView {
   description: LocalizedText | null
   note: LocalizedText | null
   price: PriceParts
+  /** Integer millimes, for structured data. */
+  millimes: number
   badges: { kind: BadgeKind; text: string }[]
   options: OptionView[]
   includes: { items: string[]; lang: Locale }
@@ -72,6 +74,7 @@ export function dishView(item: MenuItem, locale: Locale): DishView {
     description: optional(description),
     note: optional(note),
     price: priceParts(item.price, locale, item.priceUnit),
+    millimes: item.price,
     badges,
     options: item.options.map((option) => ({
       label: pick(locale, option.label),

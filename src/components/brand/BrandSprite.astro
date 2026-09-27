@@ -4,27 +4,12 @@
  * printed-menu logo; the wordmark is "La Voile Blanche" in Caveat, outlined. Both are pending the
  * official logo file.
  */
+import { SAIL_MARKUP, SAIL_VIEWBOX } from '../../lib/brand-sail'
 import { WORDMARK } from '../../lib/brand-wordmark'
 ---
 
 <svg width="0" height="0" aria-hidden="true" style="position:absolute">
-  <symbol id="vb-sail" viewBox="0 0 96 120">
-    <path
-      fill="currentColor"
-      d="M27.5 13C19 40 15 66 13.5 90l5.5-1.5C21 62 25 37 30.5 14.5z"
-    ></path>
-    <path
-      fill="currentColor"
-      d="M32.5 6.5C53 18 64 38 63 58c-1 14-13 24-41.5 32.5C28.5 64 32.5 36 32.5 6.5z"
-    ></path>
-    <path fill="currentColor" d="M66 45c8 4 14 17 15 34l-3.5.5C76.5 64 72 54 66.5 49.5z"></path>
-    <g fill="none" stroke="currentColor" stroke-linecap="round">
-      <path stroke-width="2.6" d="M67 48v35"></path>
-      <path stroke-width="5" d="M17 97c18 0 38-5 56-13"></path>
-      <path stroke-width="5" d="M11 106.5c9-3 17-2.5 25-.5s14 1 21-3.5 15-7.5 30-10"></path>
-      <path stroke-width="5" d="M22 115c9-3 17-2 25 0s14 0 20-4.5 8-4 14-4.5"></path>
-    </g>
-  </symbol>
+  <symbol id="vb-sail" viewBox={SAIL_VIEWBOX} set:html={SAIL_MARKUP} />
   <symbol id="vb-wordmark" viewBox={WORDMARK.viewBox}>
     <path fill="currentColor" d={WORDMARK.d}></path>
   </symbol>

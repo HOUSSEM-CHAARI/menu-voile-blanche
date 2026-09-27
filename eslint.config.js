@@ -14,6 +14,7 @@ export default [
       'playwright-report/',
       'test-results/',
       'public/',
+      'screenshots/',
     ],
   },
   js.configs.recommended,
