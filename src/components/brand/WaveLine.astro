@@ -1,0 +1,47 @@
+---
+/**
+ * The logo's wave, used as the single ornament: drawn once under the hero,
+ * then repeated quietly between menu sections.
+ */
+interface Props {
+  variant?: 'hero' | 'divider'
+  class?: string
+}
+
+const { variant = 'divider', class: className } = Astro.props
+const periods = variant === 'hero' ? 7 : 4
+const period = 24
+const amplitude = 3.2
+// One quadratic crest, then smooth reflections: a regular wave of `periods` crests.
+const d = `M1 5q${period / 4} ${-amplitude} ${period / 2} 0${` t${period / 2} 0`.repeat(periods * 2 - 1)}`
+const width = periods * period + 2
+---
+
+<svg
+  class:list={['wave', `wave--${variant}`, className]}
+  viewBox={`0 0 ${width} 10`}
+  width={variant === 'hero' ? 180 : 104}
+  height="10"
+  aria-hidden="true"
+  focusable="false"
+>
+  <path d={d} pathLength="1" fill="none" stroke="currentColor" stroke-linecap="round"></path>
+</svg>
+
+<style>
+  .wave {
+    display: block;
+    margin-inline: auto;
+    overflow: visible;
+  }
+  .wave path {
+    stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+  }
+  .wave--divider {
+    color: var(--sand);
+  }
+  .wave--hero {
+    color: var(--abyss);
+  }
+</style>

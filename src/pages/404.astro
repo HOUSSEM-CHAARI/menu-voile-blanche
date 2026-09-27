@@ -1,0 +1,45 @@
+---
+import Logo from '../components/brand/Logo.astro'
+import WaveLine from '../components/brand/WaveLine.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout locale="fr" title="Page introuvable — La Voile Blanche">
+  <main id="menu" class="not-found wrap">
+    <Logo size={180} />
+    <h1>Cette page n’existe pas.</h1>
+    <WaveLine />
+    <p>
+      <a href="/fr">Voir la carte</a> ·{' '}
+      <a href="/ar" lang="ar">
+        القائمة
+      </a>{' '}
+      ·{' '}
+      <a href="/en" lang="en">
+        See the menu
+      </a>
+    </p>
+  </main>
+</BaseLayout>
+
+<style>
+  .not-found {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-5);
+    min-height: 80vh;
+    align-content: center;
+    text-align: center;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: var(--text-title);
+    line-height: var(--leading-tight);
+  }
+  a {
+    display: inline-block;
+    min-height: var(--tap);
+    padding-block: var(--space-2);
+  }
+</style>

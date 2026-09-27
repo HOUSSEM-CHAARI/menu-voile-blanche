@@ -1,25 +1,53 @@
 ---
+import '../styles/global.css'
+import BrandSprite from '../components/brand/BrandSprite.astro'
 import { dir, ui } from '../lib/i18n'
 import type { Locale } from '../lib/types'
 
 interface Props {
   locale: Locale
+  title?: string
+  description?: string
 }
 
-const { locale } = Astro.props
+const { locale, title, description } = Astro.props
 const t = ui(locale)
+
+// Only the two files needed for the first screen are preloaded; Arabic fonts only on Arabic pages.
+const preload =
+  locale === 'ar'
+    ? ['/fonts/voile-sans-arabic-400.woff2', '/fonts/noto-naskh-arabic-500.woff2']
+    : ['/fonts/voile-sans-400.woff2', '/fonts/newsreader-600.woff2']
 ---
 
 <!doctype html>
 <html lang={locale} dir={dir(locale)}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{t.metaTitle}</title>
-    <meta name="description" content={t.metaDescription} />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title ?? t.metaTitle}</title>
+    <meta name="description" content={description ?? t.metaDescription} />
+    <meta name="theme-color" content="#f6f8f9" />
+    <meta name="format-detection" content="telephone=no" />
+    {preload.map((href) => (
+      <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />
+    ))}
+    <script is:inline>
+      // The hero animation plays once per visit, not on every language switch.
+      try {
+        if (sessionStorage.getItem('vb-seen')) document.documentElement.classList.add('seen')
+        sessionStorage.setItem('vb-seen', '1')
+      } catch {
+        document.documentElement.classList.add('seen')
+      }
+    </script>
     <slot name="head" />
   </head>
   <body>
+    <a class="skip-link" href="#menu">
+      {t.skipToMenu}
+    </a>
+    <BrandSprite />
     <slot />
   </body>
 </html>

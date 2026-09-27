@@ -1,8 +1,12 @@
 ---
+import WaveLine from './brand/WaveLine.astro'
+import Footer from './Footer.astro'
+import Hero from './Hero.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { pick, ui } from '../lib/i18n'
 import { getPublicMenu } from '../lib/menu'
 import { formatPrice } from '../lib/price'
+import { restaurantInfo } from '../lib/restaurant'
 import type { Locale } from '../lib/types'
 
 interface Props {
@@ -12,26 +16,29 @@ interface Props {
 const { locale } = Astro.props
 const t = ui(locale)
 const menu = await getPublicMenu()
-const name = (values: { fr: string; ar: string | null; en: string | null }) => pick(locale, values)
+const info = restaurantInfo(menu.settings, locale)
 ---
 
 <BaseLayout locale={locale}>
-  <main id="menu">
-    <h1>{menu.settings.restaurantName}</h1>
-    {menu.sections.map(({ category, items }) => {
-      const title = name({ fr: category.nameFr, ar: category.nameAr, en: category.nameEn })
+  <Hero locale={locale} info={info} />
+  <main id="menu" class="wrap">
+    {menu.sections.map(({ category, items }, index) => {
+      const title = pick(locale, { fr: category.nameFr, ar: category.nameAr, en: category.nameEn })
       return (
-        <section id={category.slug}>
+        <section id={category.slug} class="section">
+          {index > 0 && <WaveLine />}
           <h2 lang={title.lang}>{title.text}</h2>
-          <ul>
+          <ul role="list">
             {items.map((item) => {
-              const itemName = name({ fr: item.nameFr, ar: item.nameAr, en: item.nameEn })
+              const name = pick(locale, { fr: item.nameFr, ar: item.nameAr, en: item.nameEn })
               return (
                 <li id={item.slug} data-dish>
-                  <span lang={itemName.lang} data-dish-name>
-                    {itemName.text}
-                  </span>{' '}
-                  <span data-price>{formatPrice(item.price, locale, item.priceUnit)}</span>
+                  <span lang={name.lang} data-dish-name>
+                    {name.text}
+                  </span>
+                  <span class="price" data-price>
+                    {formatPrice(item.price, locale, item.priceUnit)}
+                  </span>
                   {!item.isAvailable && <span> · {t.soldOut}</span>}
                 </li>
               )
@@ -41,4 +48,31 @@ const name = (values: { fr: string; ar: string | null; en: string | null }) => p
       )
     })}
   </main>
+  <Footer locale={locale} info={info} />
 </BaseLayout>
+
+<style>
+  #menu {
+    max-width: var(--measure);
+  }
+  .section {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-6);
+  }
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: var(--text-title);
+    line-height: var(--leading-tight);
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-block: var(--space-2);
+    font-family: var(--font-serif);
+    font-weight: var(--w-dish);
+    font-size: var(--text-dish);
+  }
+</style>

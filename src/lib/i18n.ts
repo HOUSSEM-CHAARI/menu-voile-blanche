@@ -90,7 +90,7 @@ const ar: Dictionary = {
   language: 'اللغة',
   call: 'اتصال',
   directions: 'الاتجاهات',
-  hours: 'أوقات العمل',
+  hours: 'المواعيد',
   signatures: 'أطباقنا المميزة',
   menu: 'قائمة الطعام',
   categories: 'أقسام القائمة',

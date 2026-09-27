@@ -1,0 +1,140 @@
+"""
+Subsets the self-hosted web fonts (two weights per family) and outlines the wordmark.
+
+Sources are the OFL releases from github.com/google/fonts. Run once when a font changes:
+    pip install fonttools brotli uharfbuzz
+    python scripts/assets/build_fonts.py <folder with the source .ttf files>
+
+Outputs:
+    public/fonts/*.woff2              subset WOFF2 files
+    src/lib/brand-wordmark.ts         SVG path of "La Voile Blanche" set in Caveat 600
+"""
+
+import io
+import sys
+from pathlib import Path
+
+import uharfbuzz as hb
+from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.subset import Options, Subsetter
+from fontTools.ttLib import TTFont
+from fontTools.varLib import instancer
+
+ROOT = Path(__file__).resolve().parents[2]
+SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "fonts-src"
+OUT = ROOT / "public" / "fonts"
+
+LATIN = (
+    "U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2009-200A,"
+    "U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+202F,U+2039-203A,U+20AC,"
+    "U+2122,U+2190-2193,U+2212"
+)
+ARABIC = (
+    "U+0020-007E,U+00A0,U+00AB,U+00BB,U+060C,U+061B,U+061F,U+0621-0652,U+0660-066D,"
+    "U+0670,U+067E,U+0686,U+06A4,U+06AF,U+06CC,U+200C-200F,U+2010-2011,U+2013-2014,"
+    "U+2026,U+202F,U+FD3E-FD3F"
+)
+
+# (source file, output name, axis settings, unicode ranges, family name)
+# Source Sans and IBM Plex carry a Reserved Font Name under the OFL, so their modified (subset)
+# versions are renamed "Voile Sans" and "Voile Sans Arabic".
+FONTS = [
+    ("Newsreader.ttf", "newsreader-400", {"wght": 400, "opsz": 36}, LATIN, None),  # display cut
+    ("Newsreader.ttf", "newsreader-600", {"wght": 600, "opsz": 16}, LATIN, None),  # text cut
+    ("SourceSans3.ttf", "voile-sans-400", {"wght": 400}, LATIN, "Voile Sans"),
+    ("SourceSans3.ttf", "voile-sans-600", {"wght": 600}, LATIN, "Voile Sans"),
+    ("NotoNaskhArabic.ttf", "noto-naskh-arabic-500", {"wght": 500}, ARABIC, None),
+    ("NotoNaskhArabic.ttf", "noto-naskh-arabic-700", {"wght": 700}, ARABIC, None),
+    ("PlexArabic-Regular.ttf", "voile-sans-arabic-400", None, ARABIC, "Voile Sans Arabic"),
+    ("PlexArabic-SemiBold.ttf", "voile-sans-arabic-600", None, ARABIC, "Voile Sans Arabic"),
+]
+
+
+def parse_ranges(ranges: str) -> list[int]:
+    codes: list[int] = []
+    for part in ranges.split(","):
+        part = part.strip().removeprefix("U+")
+        if "-" in part:
+            start, end = part.split("-")
+            codes.extend(range(int(start, 16), int(end, 16) + 1))
+        else:
+            codes.append(int(part, 16))
+    return codes
+
+
+def build_font(
+    source: str, name: str, axes: dict | None, ranges: str, family: str | None
+) -> None:
+    font = TTFont(SRC / source)
+    if axes and "fvar" in font:
+        font = instancer.instantiateVariableFont(font, axes)
+    options = Options()
+    options.flavor = "woff2"
+    options.layout_features = ["*"]
+    options.name_IDs = [1, 2]
+    options.hinting = False
+    options.desubroutinize = True
+    subsetter = Subsetter(options)
+    subsetter.populate(unicodes=parse_ranges(ranges))
+    subsetter.subset(font)
+    if family:
+        names = font["name"]
+        names.names = [record for record in names.names if record.nameID not in (1, 4, 6, 16, 17)]
+        names.setName(family, 1, 3, 1, 0x409)
+        names.setName(family.replace(" ", ""), 6, 3, 1, 0x409)
+    font.flavor = "woff2"
+    target = OUT / f"{name}.woff2"
+    font.save(target)
+    print(f"  {target.name:34} {target.stat().st_size / 1024:6.1f} KB")
+
+
+def build_wordmark(text: str = "La Voile Blanche", weight: int = 600) -> None:
+    """Shapes the text with HarfBuzz and writes one SVG path (y axis pointing down)."""
+    varfont = TTFont(SRC / "Caveat.ttf")
+    font = instancer.instantiateVariableFont(varfont, {"wght": weight})
+    buffer = io.BytesIO()
+    font.save(buffer)
+    blob = hb.Blob(buffer.getvalue())
+    hb_font = hb.Font(hb.Face(blob))
+    hb_buffer = hb.Buffer()
+    hb_buffer.add_str(text)
+    hb_buffer.guess_segment_properties()
+    hb.shape(hb_font, hb_buffer, {"kern": True, "liga": True, "calt": True})
+
+    glyph_set = font.getGlyphSet()
+    order = font.getGlyphOrder()
+    ascender = font["hhea"].ascent
+    descender = font["hhea"].descent
+    pen = SVGPathPen(glyph_set, ntos=lambda n: str(round(n)))
+    bounds = BoundsPen(glyph_set)
+    x = 0
+    for info, pos in zip(hb_buffer.glyph_infos, hb_buffer.glyph_positions):
+        glyph = order[info.codepoint]
+        transform = (1, 0, 0, -1, x + pos.x_offset, ascender - pos.y_offset)
+        glyph_set[glyph].draw(TransformPen(pen, transform))
+        glyph_set[glyph].draw(TransformPen(bounds, transform))
+        x += pos.x_advance
+    x_min, y_min, x_max, y_max = (round(v) for v in bounds.bounds)
+    pad = 20
+    path = pen.getCommands()
+    ts = ROOT / "src" / "lib" / "brand-wordmark.ts"
+    ts.write_text(
+        "// Generated by scripts/assets/build_fonts.py: \"La Voile Blanche\" set in Caveat "
+        f"{weight} (SIL OFL 1.1),\n// outlined so no script font is downloaded. "
+        "A recreation of the handwritten logo, pending the official file.\n"
+        f"export const WORDMARK = {{\n  width: {x_max - x_min + 2 * pad},\n"
+        f"  height: {y_max - y_min + 2 * pad},\n"
+        f"  viewBox: '{x_min - pad} {y_min - pad} {x_max - x_min + 2 * pad} {y_max - y_min + 2 * pad}',\n"
+        f"  d: '{path}',\n}}\n",
+        encoding="utf-8",
+    )
+    print(f"  wordmark: {len(path) / 1024:.1f} KB, bounds {x_min} {y_min} {x_max} {y_max}")
+
+
+if __name__ == "__main__":
+    OUT.mkdir(parents=True, exist_ok=True)
+    for spec in FONTS:
+        build_font(*spec)
+    build_wordmark()

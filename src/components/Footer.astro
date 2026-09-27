@@ -1,0 +1,155 @@
+---
+import Logo from './brand/Logo.astro'
+import Icon from './Icon.astro'
+import { ui } from '../lib/i18n'
+import type { RestaurantInfo } from '../lib/restaurant'
+import type { Locale } from '../lib/types'
+
+interface Props {
+  locale: Locale
+  info: RestaurantInfo
+}
+
+const { locale, info } = Astro.props
+const t = ui(locale)
+---
+
+<footer class="footer" id="infos">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <Logo size={170} layout="inline" />
+      <span class="sr-only">{info.name}</span>
+      {info.tagline.text && <p lang={info.tagline.lang}>{info.tagline.text}</p>}
+    </div>
+
+    <dl class="footer-info">
+      {info.address.text && (
+        <div>
+          <dt>{t.address}</dt>
+          <dd>
+            <span lang={info.address.lang}>{info.address.text}</span>
+            {info.mapUrl && (
+              <a href={info.mapUrl} target="_blank" rel="noopener noreferrer">
+                <Icon name="pin" size={18} />
+                {t.directions}
+              </a>
+            )}
+          </dd>
+        </div>
+      )}
+      {info.phoneHref && (
+        <div>
+          <dt>{t.phone}</dt>
+          <dd>
+            <a href={info.phoneHref} dir="ltr">
+              <Icon name="phone" size={18} />
+              {info.phone}
+            </a>
+          </dd>
+        </div>
+      )}
+      {info.hours.text && (
+        <div>
+          <dt>{t.hours}</dt>
+          <dd lang={info.hours.lang}>{info.hours.text}</dd>
+        </div>
+      )}
+      {(info.instagram || info.facebook) && (
+        <div>
+          <dt>{t.followUs}</dt>
+          <dd class="social">
+            {info.instagram && (
+              <a href={info.instagram} target="_blank" rel="noopener noreferrer">
+                <Icon name="instagram" size={18} />
+                Instagram
+              </a>
+            )}
+            {info.facebook && (
+              <a href={info.facebook} target="_blank" rel="noopener noreferrer">
+                <Icon name="facebook" size={18} />
+                Facebook
+              </a>
+            )}
+          </dd>
+        </div>
+      )}
+    </dl>
+
+    <p class="footer-note">{t.priceNote}</p>
+    <slot />
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-block-start: var(--space-8);
+    padding-block: var(--space-7) var(--space-6);
+    background: var(--abyss);
+    color: var(--sail);
+  }
+  .footer-inner {
+    display: grid;
+    gap: var(--space-6);
+  }
+  .footer-brand {
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+    color: var(--foam);
+  }
+  .footer-brand p {
+    color: var(--seaglass);
+  }
+  .footer-info {
+    display: grid;
+    gap: var(--space-5);
+  }
+  dt {
+    margin-block-end: var(--space-1);
+    color: var(--sand);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  dd {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-1);
+    margin: 0;
+  }
+  .social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+  }
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap);
+    color: var(--seaglass);
+  }
+  a:hover {
+    color: var(--foam);
+  }
+  a:focus-visible {
+    outline-color: var(--seaglass);
+  }
+  .footer-note {
+    padding-block-start: var(--space-5);
+    border-block-start: 1px solid rgb(246 248 249 / 0.16);
+    color: var(--seaglass);
+    font-size: 0.9375rem;
+  }
+  @media (min-width: 48rem) {
+    .footer-inner {
+      grid-template-columns: minmax(14rem, 1fr) 2fr;
+      align-items: start;
+    }
+    .footer-info {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .footer-note {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
