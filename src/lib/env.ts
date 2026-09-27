@@ -7,7 +7,6 @@ const schema = z.object({
   UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
-  SESSION_SECRET: z.string().optional(),
   NODE_ENV: z.string().optional(),
 })
 

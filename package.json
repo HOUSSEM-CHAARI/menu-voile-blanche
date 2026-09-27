@@ -7,6 +7,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "predev": "npm run db:migrate --silent",
     "dev": "astro dev",
     "build": "astro build",
     "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
@@ -28,7 +29,8 @@
     "db:photos": "node --env-file-if-exists=.env --import tsx scripts/photos.ts",
     "assets:icons": "node --import tsx scripts/assets/build-icons.ts",
     "lighthouse": "node --import tsx scripts/lighthouse.ts",
-    "qr": "node --env-file-if-exists=.env --import tsx scripts/qr.ts"
+    "qr": "node --env-file-if-exists=.env --import tsx scripts/qr.ts",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run db:verify"
   },
   "dependencies": {
     "@astrojs/node": "11.1.6",

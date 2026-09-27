@@ -38,7 +38,7 @@ export async function processImage(
     .metadata()
     .catch(() => null)
   if (!metadata?.format || !ACCEPTED_FORMATS.has(metadata.format)) {
-    throw new ImageError('Format non pris en charge : utilisez une photo JPEG, PNG, WebP ou HEIC.')
+    throw new ImageError('Format non pris en charge : utilisez une photo JPEG, PNG ou WebP.')
   }
 
   const spec = SPECS[kind]

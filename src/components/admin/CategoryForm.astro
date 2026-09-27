@@ -67,12 +67,7 @@ const drafts = new Set(category.draftFields ?? [])
     )}
     <div class="field">
       <label for="photo">Choisir une image</label>
-      <input
-        id="photo"
-        name="photo"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-      />
+      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
       <p class="hint">Format paysage conseillé, recadré en 16:9.</p>
       {errors.photo && <p class="error">{errors.photo}</p>}
     </div>

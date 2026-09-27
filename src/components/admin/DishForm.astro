@@ -259,14 +259,10 @@ const errorList = Object.values(errors)
     )}
     <div class="field">
       <label for="photo">{dish.image ? 'Remplacer la photo' : 'Ajouter une photo'}</label>
-      <input
-        id="photo"
-        name="photo"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-      />
+      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
       <p class="hint">
-        JPEG, PNG, WebP ou HEIC, 10 Mo maximum. Glissez l’image pour choisir le cadrage 4:3.
+        JPEG, PNG ou WebP, 10 Mo maximum (les photos d’iPhone sont converties automatiquement).
+        Glissez l’image pour choisir le cadrage 4:3.
       </p>
     </div>
     <div class="cropper" data-cropper hidden></div>
