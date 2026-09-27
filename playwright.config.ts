@@ -10,13 +10,14 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // Uses the Chrome already installed on the machine; no browser download needed.
-    channel: 'chrome',
     trace: 'retain-on-failure',
   },
+  // Chrome projects use the Chrome already installed on the machine.
   projects: [
     { name: 'mobile', use: { ...devices['Pixel 7'], channel: 'chrome' } },
     { name: 'desktop', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
+    // iOS Safari engine (run `npx playwright install webkit` once).
+    { name: 'iphone', use: { ...devices['iPhone 14'] } },
   ],
   webServer: {
     // Rebuilds a dedicated test database so tests never touch data/menu.db.

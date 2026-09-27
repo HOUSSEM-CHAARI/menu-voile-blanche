@@ -31,6 +31,15 @@ for (const locale of locales) {
     page.on('pageerror', (error) => problems.push(`${locale} ${width}: ${error.message}`))
     await page.goto(`${base}/${locale}${path}`, { waitUntil: 'networkidle' })
     await page.evaluate(() => document.fonts.ready)
+    // Scroll through the page so lazy photos load before the full-page capture.
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.body.scrollHeight; y += 600) {
+        window.scrollTo(0, y)
+        await new Promise((done) => setTimeout(done, 60))
+      }
+      window.scrollTo(0, 0)
+    })
+    await page.waitForLoadState('networkidle')
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     )

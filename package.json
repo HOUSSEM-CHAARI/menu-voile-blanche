@@ -27,13 +27,15 @@
     "docs:content": "node --import tsx scripts/content-changes.ts",
     "db:photos": "node --env-file-if-exists=.env --import tsx scripts/photos.ts",
     "assets:icons": "node --import tsx scripts/assets/build-icons.ts",
-    "lighthouse": "node --import tsx scripts/lighthouse.ts"
+    "lighthouse": "node --import tsx scripts/lighthouse.ts",
+    "qr": "node --env-file-if-exists=.env --import tsx scripts/qr.ts"
   },
   "dependencies": {
     "@astrojs/node": "11.1.6",
     "@libsql/client": "0.18.0",
     "astro": "7.3.5",
     "drizzle-orm": "0.45.3",
+    "qrcode": "1.5.4",
     "sharp": "0.35.5",
     "zod": "4.6.5"
   },
@@ -43,6 +45,7 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@types/node": "24.19.0",
+    "@types/qrcode": "1.5.6",
     "astro-eslint-parser": "3.2.0",
     "drizzle-kit": "0.31.11",
     "eslint": "10.11.0",

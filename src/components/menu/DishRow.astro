@@ -100,7 +100,7 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
     border-block-end: 1px solid var(--line);
   }
   .dish:has(.dish-thumb) {
-    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-columns: clamp(4.5rem, 21vw, 6rem) minmax(0, 1fr);
     align-items: start;
   }
   .dish:has(.dish-link:focus-visible) {

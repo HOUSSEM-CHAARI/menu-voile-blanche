@@ -320,7 +320,7 @@ export const verifiedItems: VerifiedItem[] = [
     },
     printed: { fr: 'Ojja au Fruits de Mer', ar: 'عجة بغلال البحر' },
     description: {
-      fr: 'Plat tunisien épicé à la tomate et aux œufs, aux fruits de mer.',
+      fr: 'Plat tunisien épicé à la tomate et aux œufs, avec des fruits de mer.',
       ar: 'عجة تونسية حارة بالطماطم والبيض وغلال البحر.',
       en: 'Spicy Tunisian tomato and egg stew with seafood.',
     },
