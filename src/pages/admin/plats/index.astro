@@ -1,0 +1,236 @@
+---
+import Csrf from '../../../components/admin/Csrf.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import {
+  ActionError,
+  listCategories,
+  listDishes,
+  moveDish,
+  updateDish,
+} from '../../../lib/admin/data'
+import { formId } from '../../../lib/admin/forms'
+import { json, wantsJson } from '../../../lib/admin/http'
+import { can } from '../../../lib/auth'
+import { setFlash } from '../../../lib/flash'
+import { formatPrice } from '../../../lib/price'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  const id = formId(String(form.get('id') ?? ''))
+  const action = String(form.get('action') ?? '')
+  const back = Astro.request.headers.get('referer') ?? '/admin/plats'
+  try {
+    if (!id) throw new ActionError('Plat introuvable.')
+    if (action === 'availability') {
+      if (!can(user, 'availability:write')) throw new ActionError('Action non autorisée.')
+      const value = form.get('value') === 'true'
+      await updateDish(id, { isAvailable: value }, user, 'availability')
+      const message = value ? 'Plat de nouveau disponible' : 'Plat marqué épuisé'
+      if (wantsJson(Astro.request)) return json(true, message, { value })
+      setFlash(Astro.cookies, message)
+    } else if (!can(user, 'menu:write')) {
+      throw new ActionError('Action non autorisée.')
+    } else if (action === 'visibility') {
+      const value = form.get('value') === 'true'
+      await updateDish(id, { isVisible: value }, user, 'visibility')
+      const message = value ? 'Plat visible sur le menu' : 'Plat masqué du menu'
+      if (wantsJson(Astro.request)) return json(true, message, { value })
+      setFlash(Astro.cookies, message)
+    } else if (action === 'up' || action === 'down') {
+      await moveDish(id, action === 'up' ? -1 : 1, user)
+      setFlash(Astro.cookies, 'Ordre enregistré')
+    }
+  } catch (error) {
+    const message = error instanceof ActionError ? error.message : 'Une erreur est survenue.'
+    if (wantsJson(Astro.request)) return json(false, message)
+    setFlash(Astro.cookies, message, 'error')
+  }
+  return Astro.redirect(back.startsWith(Astro.url.origin) ? back : '/admin/plats', 303)
+}
+
+const params = Astro.url.searchParams
+const q = params.get('q') ?? ''
+const categoryId = formId(params.get('categorie') ?? '') ?? undefined
+const statusParam = params.get('statut')
+const status =
+  statusParam === 'soldout' ||
+  statusParam === 'hidden' ||
+  statusParam === 'review' ||
+  statusParam === 'nophoto'
+    ? statusParam
+    : undefined
+const [categoryList, rows] = await Promise.all([
+  listCategories(),
+  listDishes({ q, categoryId, status }),
+])
+const filtered = Boolean(q || status)
+const groups = categoryList
+  .map((category) => ({
+    category,
+    rows: rows.filter((row) => row.dish.categoryId === category.id),
+  }))
+  .filter((group) => group.rows.length > 0)
+---
+
+<AdminLayout title="Plats" section="dishes">
+  <div class="page-head">
+    <h1>
+      Plats <span class="muted">({rows.length})</span>
+    </h1>
+    <a class="button" href="/admin/plats/nouveau">
+      Ajouter un plat
+    </a>
+  </div>
+
+  <form method="get" class="panel grid-3" role="search" aria-label="Filtrer les plats">
+    <div class="field">
+      <label for="q">Rechercher</label>
+      <input id="q" name="q" type="search" value={q} placeholder="Nom en FR, AR ou EN" />
+    </div>
+    <div class="field">
+      <label for="categorie">Catégorie</label>
+      <select id="categorie" name="categorie">
+        <option value="">Toutes</option>
+        {categoryList.map((c) => (
+          <option value={c.id} selected={c.id === categoryId}>
+            {c.nameFr}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div class="field">
+      <label for="statut">État</label>
+      <select id="statut" name="statut">
+        <option value="">Tous</option>
+        <option value="soldout" selected={status === 'soldout'}>
+          Épuisés
+        </option>
+        <option value="hidden" selected={status === 'hidden'}>
+          Masqués
+        </option>
+        <option value="review" selected={status === 'review'}>
+          À vérifier
+        </option>
+        <option value="nophoto" selected={status === 'nophoto'}>
+          Sans photo
+        </option>
+      </select>
+    </div>
+    <div class="actions-row">
+      <button type="submit" class="button button--ghost">
+        Filtrer
+      </button>
+      {(q || categoryId || status) && <a href="/admin/plats">Tout afficher</a>}
+    </div>
+  </form>
+
+  {rows.length === 0 && <p class="panel">Aucun plat ne correspond.</p>}
+
+  <div data-sortable={filtered ? undefined : '/admin/plats/ordre'}>
+    {groups.map(({ category, rows: dishes }) => (
+      <section>
+        <h2 class="row-group-title">{category.nameFr}</h2>
+        <ul class="rows" role="list" data-group-id={category.id}>
+          {dishes.map(({ dish }, index) => (
+            <li class="row" data-id={dish.id} draggable={filtered ? undefined : 'true'}>
+              {dish.image ? (
+                <img
+                  class="row-thumb"
+                  src={dish.image.jpg[0]?.src}
+                  alt=""
+                  width="56"
+                  height="42"
+                  loading="lazy"
+                />
+              ) : (
+                <span class="row-thumb" aria-hidden="true" />
+              )}
+              <div>
+                <a class="row-title" href={`/admin/plats/${dish.id}`}>
+                  {dish.nameFr}
+                </a>
+                <div class="row-meta">
+                  <span>{formatPrice(dish.price, 'fr', dish.priceUnit)}</span>
+                  {!dish.isVisible && <span class="tag tag--off">masqué</span>}
+                  {dish.needsOwnerReview && <span class="tag tag--warn">à vérifier</span>}
+                  {dish.imageSource === 'temporary' && <span class="tag">photo temporaire</span>}
+                  {(!dish.nameAr || !dish.nameEn) && (
+                    <span class="tag tag--warn">traduction manquante</span>
+                  )}
+                </div>
+              </div>
+              <div class="actions-row">
+                <form method="post" data-inline-toggle>
+                  <Csrf />
+                  <input type="hidden" name="id" value={dish.id} />
+                  <input type="hidden" name="action" value="availability" />
+                  <input type="hidden" name="value" value={String(!dish.isAvailable)} />
+                  <button
+                    type="submit"
+                    class="button button--small availability"
+                    aria-pressed={dish.isAvailable ? 'true' : 'false'}
+                    data-label-on="Disponible"
+                    data-label-off="Épuisé"
+                    aria-label={`Disponibilité de ${dish.nameFr}`}
+                  >
+                    {dish.isAvailable ? 'Disponible' : 'Épuisé'}
+                  </button>
+                </form>
+                {!filtered && (
+                  <form method="post" class="actions-row">
+                    <Csrf />
+                    <input type="hidden" name="id" value={dish.id} />
+                    <button
+                      type="submit"
+                      name="action"
+                      value="up"
+                      class="button button--ghost button--small"
+                      disabled={index === 0}
+                      aria-label={`Monter ${dish.nameFr}`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="submit"
+                      name="action"
+                      value="down"
+                      class="button button--ghost button--small"
+                      disabled={index === dishes.length - 1}
+                      aria-label={`Descendre ${dish.nameFr}`}
+                    >
+                      ↓
+                    </button>
+                  </form>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+  {!filtered && (
+    <p class="muted">Astuce : sur ordinateur, glissez-déposez une ligne pour changer l’ordre.</p>
+  )}
+</AdminLayout>
+
+<style>
+  .row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .row > .actions-row {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  @media (min-width: 48rem) {
+    .row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    .row > .actions-row {
+      grid-column: auto;
+    }
+  }
+</style>

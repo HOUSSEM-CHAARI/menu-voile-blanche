@@ -1,0 +1,33 @@
+---
+import CategoryForm from '../../../components/admin/CategoryForm.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import { saveCategory } from '../../../lib/admin/category-save'
+import type { FieldErrors } from '../../../lib/admin/forms'
+import { can } from '../../../lib/auth'
+import type { Category } from '../../../lib/db/schema'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+if (!can(user, 'menu:write')) return new Response('Action non autorisée.', { status: 403 })
+
+let errors: FieldErrors = {}
+let category: Partial<Category> = { isVisible: true, layout: 'standard' }
+if (Astro.request.method === 'POST') {
+  const result = await saveCategory(await Astro.request.formData(), user)
+  if (result.category) {
+    setFlash(Astro.cookies, 'Catégorie créée')
+    return Astro.redirect('/admin/categories', 303)
+  }
+  errors = result.errors
+  category = result.submitted
+  Astro.response.status = 422
+}
+---
+
+<AdminLayout title="Nouvelle catégorie" section="categories">
+  <div class="page-head">
+    <h1>Nouvelle catégorie</h1>
+  </div>
+  <CategoryForm category={category} errors={errors} submitLabel="Créer la catégorie" />
+</AdminLayout>

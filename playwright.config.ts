@@ -14,10 +14,14 @@ export default defineConfig({
   },
   // Chrome projects use the Chrome already installed on the machine.
   projects: [
-    { name: 'mobile', use: { ...devices['Pixel 7'], channel: 'chrome' } },
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 7'], channel: 'chrome' },
+      testIgnore: /admin\.spec/,
+    },
     { name: 'desktop', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
     // iOS Safari engine (run `npx playwright install webkit` once).
-    { name: 'iphone', use: { ...devices['iPhone 14'] } },
+    { name: 'iphone', use: { ...devices['iPhone 14'] }, testIgnore: /admin\.spec/ },
   ],
   webServer: {
     // Rebuilds a dedicated test database so tests never touch data/menu.db.
@@ -25,6 +29,12 @@ export default defineConfig({
     url: `http://localhost:${PORT}/fr`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { PORT: String(PORT), HOST: 'localhost', DATABASE_URL: TEST_DB },
+    env: {
+      PORT: String(PORT),
+      HOST: 'localhost',
+      DATABASE_URL: TEST_DB,
+      ADMIN_USERNAME: 'test-admin',
+      ADMIN_PASSWORD: 'test-password-2026',
+    },
   },
 })

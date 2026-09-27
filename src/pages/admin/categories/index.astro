@@ -1,0 +1,117 @@
+---
+import Csrf from '../../../components/admin/Csrf.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import { ActionError, listCategories, moveCategory, updateCategory } from '../../../lib/admin/data'
+import { formId } from '../../../lib/admin/forms'
+import { json, wantsJson } from '../../../lib/admin/http'
+import { can } from '../../../lib/auth'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  const id = formId(String(form.get('id') ?? ''))
+  const action = String(form.get('action') ?? '')
+  try {
+    if (!can(user, 'menu:write')) throw new ActionError('Action non autorisée.')
+    if (!id) throw new ActionError('Catégorie introuvable.')
+    if (action === 'up' || action === 'down') {
+      await moveCategory(id, action === 'up' ? -1 : 1, user)
+      setFlash(Astro.cookies, 'Ordre enregistré')
+    } else if (action === 'visibility') {
+      const value = form.get('value') === 'true'
+      await updateCategory(id, { isVisible: value }, user)
+      const message = value ? 'Catégorie visible' : 'Catégorie masquée'
+      if (wantsJson(Astro.request)) return json(true, message, { value })
+      setFlash(Astro.cookies, message)
+    }
+  } catch (error) {
+    const message = error instanceof ActionError ? error.message : 'Une erreur est survenue.'
+    if (wantsJson(Astro.request)) return json(false, message)
+    setFlash(Astro.cookies, message, 'error')
+  }
+  return Astro.redirect('/admin/categories', 303)
+}
+
+const categories = await listCategories()
+---
+
+<AdminLayout title="Catégories" section="categories">
+  <div class="page-head">
+    <h1>Catégories</h1>
+    <a class="button" href="/admin/categories/nouvelle">
+      Ajouter une catégorie
+    </a>
+  </div>
+  <p class="muted">L’ordre ici est l’ordre du menu. Glissez-déposez ou utilisez ↑ ↓.</p>
+  <div data-sortable="/admin/categories/ordre">
+    <ul class="rows" role="list" data-group-id="0">
+      {categories.map((category, index) => (
+        <li class="row" data-id={category.id} draggable="true">
+          <span class="drag-handle" aria-hidden="true">
+            ⋮⋮
+          </span>
+          <div>
+            <a class="row-title" href={`/admin/categories/${category.id}`}>
+              {category.nameFr}
+            </a>
+            <div class="row-meta">
+              <span>{category.dishCount} plat(s)</span>
+              {!category.isVisible && <span class="tag tag--off">masquée</span>}
+              {(!category.nameAr || !category.nameEn) && (
+                <span class="tag tag--warn">traduction manquante</span>
+              )}
+              {category.draftFields.length > 0 && (
+                <span class="tag tag--draft">traduction brouillon</span>
+              )}
+            </div>
+          </div>
+          <div class="actions-row">
+            <form method="post" data-inline-toggle>
+              <Csrf />
+              <input type="hidden" name="id" value={category.id} />
+              <input type="hidden" name="action" value="visibility" />
+              <input type="hidden" name="value" value={String(!category.isVisible)} />
+              <button
+                type="submit"
+                class="button button--small button--ghost"
+                aria-pressed={category.isVisible ? 'true' : 'false'}
+                data-label-on="Visible"
+                data-label-off="Masquée"
+                aria-label={`Visibilité de ${category.nameFr}`}
+              >
+                {category.isVisible ? 'Visible' : 'Masquée'}
+              </button>
+            </form>
+            <form method="post" class="actions-row">
+              <Csrf />
+              <input type="hidden" name="id" value={category.id} />
+              <button
+                type="submit"
+                name="action"
+                value="up"
+                class="button button--ghost button--small"
+                disabled={index === 0}
+                aria-label={`Monter ${category.nameFr}`}
+              >
+                ↑
+              </button>
+              <button
+                type="submit"
+                name="action"
+                value="down"
+                class="button button--ghost button--small"
+                disabled={index === categories.length - 1}
+                aria-label={`Descendre ${category.nameFr}`}
+              >
+                ↓
+              </button>
+            </form>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</AdminLayout>

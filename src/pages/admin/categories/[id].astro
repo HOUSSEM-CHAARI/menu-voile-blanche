@@ -1,0 +1,94 @@
+---
+import CategoryForm from '../../../components/admin/CategoryForm.astro'
+import Csrf from '../../../components/admin/Csrf.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import { saveCategory } from '../../../lib/admin/category-save'
+import { ActionError, deleteCategory, getCategory, listCategories } from '../../../lib/admin/data'
+import { formId, type FieldErrors } from '../../../lib/admin/forms'
+import { can } from '../../../lib/auth'
+import type { Category } from '../../../lib/db/schema'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+const id = formId(Astro.params.id)
+const existing = id ? await getCategory(id) : undefined
+if (!id || !existing) return Astro.rewrite('/404')
+
+let errors: FieldErrors = {}
+let category: Partial<Category> = existing
+if (Astro.request.method === 'POST') {
+  if (!can(user, 'menu:write')) return new Response('Action non autorisée.', { status: 403 })
+  const form = await Astro.request.formData()
+  if (form.get('action') === 'delete') {
+    try {
+      await deleteCategory(id, formId(String(form.get('moveTo') ?? '')), user)
+      setFlash(Astro.cookies, 'Catégorie supprimée')
+      return Astro.redirect('/admin/categories', 303)
+    } catch (error) {
+      errors = { delete: error instanceof ActionError ? error.message : 'Suppression impossible.' }
+    }
+  } else {
+    const result = await saveCategory(form, user, existing)
+    if (result.category) {
+      setFlash(Astro.cookies, 'Catégorie enregistrée')
+      return Astro.redirect(`/admin/categories/${id}`, 303)
+    }
+    errors = result.errors
+    category = result.submitted
+    Astro.response.status = 422
+  }
+}
+
+const all = await listCategories()
+const current = all.find((c) => c.id === id)
+const others = all.filter((c) => c.id !== id)
+---
+
+<AdminLayout title={existing.nameFr} section="categories">
+  <div class="page-head">
+    <div>
+      <p>
+        <a href="/admin/categories">← Toutes les catégories</a>
+      </p>
+      <h1>{existing.nameFr}</h1>
+    </div>
+    <a class="button button--ghost" href={`/admin/plats?categorie=${id}`}>
+      Voir ses plats ({current?.dishCount ?? 0})
+    </a>
+  </div>
+  <CategoryForm category={category} errors={errors} submitLabel="Enregistrer" />
+
+  <section class="panel stack">
+    <h2>Supprimer la catégorie</h2>
+    {errors.delete && (
+      <p class="error" role="alert">
+        {errors.delete}
+      </p>
+    )}
+    <form method="post" class="stack" data-confirm="Supprimer définitivement cette catégorie ?">
+      <Csrf />
+      <input type="hidden" name="action" value="delete" />
+      {(current?.dishCount ?? 0) > 0 ? (
+        <div class="field">
+          <label for="moveTo">
+            Elle contient {current?.dishCount} plat(s). Où les déplacer avant de la supprimer ?
+          </label>
+          <select id="moveTo" name="moveTo" required>
+            <option value="">Choisir une catégorie…</option>
+            {others.map((c) => (
+              <option value={c.id}>{c.nameFr}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <p class="muted">Cette catégorie est vide.</p>
+      )}
+      <div>
+        <button type="submit" class="button button--danger">
+          Supprimer la catégorie
+        </button>
+      </div>
+    </form>
+  </section>
+</AdminLayout>

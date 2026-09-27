@@ -19,10 +19,12 @@ const { runMigrations } = await import('./lib/migrate')
 const { seed } = await import('./lib/seed')
 const { verify } = await import('./lib/verify')
 const { importTemporaryPhotos } = await import('./lib/photos')
+const { ensureAdmin } = await import('../src/lib/auth')
 
 await runMigrations()
 const result = await seed()
 console.log(`✓ Base recréée : ${result.categories} catégories, ${result.items} plats`)
+await ensureAdmin(env.ADMIN_USERNAME, env.ADMIN_PASSWORD)
 const photos = await importTemporaryPhotos()
 console.log(`✓ ${photos} photos temporaires importées`)
 

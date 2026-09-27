@@ -1,0 +1,51 @@
+---
+import DishForm from '../../../components/admin/DishForm.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import { listCategories } from '../../../lib/admin/data'
+import { saveDish } from '../../../lib/admin/dish-save'
+import { formId, type FieldErrors } from '../../../lib/admin/forms'
+import { can } from '../../../lib/auth'
+import type { MenuItem } from '../../../lib/db/schema'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+if (!can(user, 'menu:write')) return new Response('Action non autorisée.', { status: 403 })
+
+const categories = await listCategories()
+let errors: FieldErrors = {}
+const firstCategory = formId(Astro.url.searchParams.get('categorie') ?? '') ?? categories[0]?.id
+let dish: Partial<MenuItem> = {
+  ...(firstCategory ? { categoryId: firstCategory } : {}),
+  isAvailable: true,
+  isVisible: true,
+  tags: [],
+  kind: 'other',
+}
+let priceText: string | undefined
+
+if (Astro.request.method === 'POST') {
+  const result = await saveDish(await Astro.request.formData(), user)
+  if (result.dish) {
+    setFlash(Astro.cookies, 'Plat enregistré')
+    return Astro.redirect(`/admin/plats/${result.dish.id}`, 303)
+  }
+  errors = result.errors
+  dish = result.submitted
+  priceText = result.priceText
+  Astro.response.status = 422
+}
+---
+
+<AdminLayout title="Nouveau plat" section="dishes">
+  <div class="page-head">
+    <h1>Nouveau plat</h1>
+  </div>
+  <DishForm
+    dish={dish}
+    priceText={priceText}
+    categories={categories}
+    errors={errors}
+    submitLabel="Enregistrer le plat"
+  />
+</AdminLayout>

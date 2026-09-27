@@ -1,0 +1,5 @@
+---
+const token = Astro.locals.user?.csrfToken ?? ''
+---
+
+<input type="hidden" name="_csrf" value={token} />

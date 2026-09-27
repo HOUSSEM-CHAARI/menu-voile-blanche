@@ -1,0 +1,171 @@
+---
+import Csrf from '../../components/admin/Csrf.astro'
+import LocalizedField from '../../components/admin/LocalizedField.astro'
+import AdminLayout from '../../layouts/AdminLayout.astro'
+import { getSettings, updateSettings } from '../../lib/admin/data'
+import { parseSettingsForm, SETTINGS_FIELDS, type FieldErrors } from '../../lib/admin/forms'
+import { can } from '../../lib/auth'
+import type { Settings } from '../../lib/db/schema'
+import { setFlash } from '../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+
+let settings: Settings = await getSettings()
+let errors: FieldErrors = {}
+
+if (Astro.request.method === 'POST') {
+  if (!can(user, 'settings:write')) return new Response('Action non autorisée.', { status: 403 })
+  const form = await Astro.request.formData()
+  const { data, errors: found } = parseSettingsForm(form)
+  if (data) {
+    // Confirming a French text also confirms its Arabic and English versions.
+    const confirmed = new Set(
+      form
+        .getAll('confirmed')
+        .map(String)
+        .flatMap((key) =>
+          key.endsWith('Fr') ? [key, key.replace(/Fr$/, 'Ar'), key.replace(/Fr$/, 'En')] : [key],
+        ),
+    )
+    const unconfirmedFields = settings.unconfirmedFields.filter(
+      (key) =>
+        !confirmed.has(key) && data[key as keyof typeof data] === settings[key as keyof Settings],
+    )
+    await updateSettings({ ...data, unconfirmedFields }, user)
+    setFlash(Astro.cookies, 'Réglages enregistrés')
+    return Astro.redirect('/admin/reglages', 303)
+  }
+  errors = found
+  settings = {
+    ...settings,
+    ...Object.fromEntries(SETTINGS_FIELDS.map((k) => [k, String(form.get(k) ?? '')])),
+  }
+  Astro.response.status = 422
+}
+
+const pending = new Set(settings.unconfirmedFields)
+const Pending = (key: string) => pending.has(key)
+const single = [
+  { key: 'restaurantName', label: 'Nom du restaurant', type: 'text' },
+  { key: 'phone', label: 'Téléphone', type: 'tel' },
+  { key: 'whatsapp', label: 'WhatsApp (facultatif)', type: 'tel' },
+  { key: 'city', label: 'Ville', type: 'text' },
+  { key: 'mapUrl', label: 'Lien Google Maps (itinéraire)', type: 'url' },
+  { key: 'instagram', label: 'Instagram', type: 'url' },
+  { key: 'facebook', label: 'Facebook', type: 'url' },
+  { key: 'baseUrl', label: 'Adresse du menu (utilisée par le QR code)', type: 'url' },
+] as const
+---
+
+<AdminLayout title="Réglages" section="settings">
+  <div class="page-head">
+    <h1>Réglages</h1>
+  </div>
+  {pending.size > 0 && (
+    <p class="panel">
+      <span class="tag tag--warn">à confirmer</span> Les champs marqués ainsi ont été préremplis et
+      doivent être vérifiés. Cochez « confirmé » ou corrigez-les.
+    </p>
+  )}
+  <form method="post" class="stack" data-dirty-guard>
+    <Csrf />
+    <section class="panel stack">
+      <h2>Restaurant</h2>
+      <div class="grid-2">
+        {single.map((field) => (
+          <div class="field">
+            <label for={field.key}>
+              {field.label} {Pending(field.key) && <span class="tag tag--warn">à confirmer</span>}
+            </label>
+            <input
+              id={field.key}
+              name={field.key}
+              type={field.type}
+              value={String(settings[field.key] ?? '')}
+              dir={field.type === 'text' ? undefined : 'ltr'}
+              aria-invalid={errors[field.key] ? 'true' : undefined}
+            />
+            {errors[field.key] && <p class="error">{errors[field.key]}</p>}
+            {Pending(field.key) && (
+              <label class="check">
+                <input type="checkbox" name="confirmed" value={field.key} /> confirmé
+              </label>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+    <section class="panel stack">
+      <h2>Textes affichés</h2>
+      <LocalizedField
+        name="tagline"
+        label="Phrase d’accroche"
+        values={{ fr: settings.taglineFr, ar: settings.taglineAr, en: settings.taglineEn }}
+        errors={errors}
+      />
+      <LocalizedField
+        name="address"
+        label="Adresse"
+        values={{ fr: settings.addressFr, ar: settings.addressAr, en: settings.addressEn }}
+        errors={errors}
+      />
+      <LocalizedField
+        name="openingHours"
+        label="Horaires"
+        multiline
+        values={{
+          fr: settings.openingHoursFr,
+          ar: settings.openingHoursAr,
+          en: settings.openingHoursEn,
+        }}
+        errors={errors}
+      />
+      {['taglineFr', 'addressFr', 'openingHoursFr'].some(Pending) && (
+        <div class="actions-row">
+          {[
+            ['tagline', 'Accroche'],
+            ['address', 'Adresse'],
+            ['openingHours', 'Horaires'],
+          ].map(([key, label]) =>
+            Pending(`${key}Fr`) ? (
+              <label class="check">
+                <input type="checkbox" name="confirmed" value={`${key}Fr`} />
+                {label} confirmé(e)
+              </label>
+            ) : null,
+          )}
+        </div>
+      )}
+    </section>
+    <div class="form-bar">
+      <button type="submit" class="button">
+        Enregistrer les réglages
+      </button>
+    </div>
+  </form>
+
+  <section class="panel stack">
+    <h2>QR code et carte de table</h2>
+    <p>
+      Le QR code ouvre <strong dir="ltr">{settings.baseUrl.replace(/\/+$/, '')}/</strong>.
+    </p>
+    {/localhost|127\.0\.0\.1/.test(settings.baseUrl) && (
+      <p>
+        <span class="tag tag--warn">adresse locale</span> Renseignez l’adresse publique avant
+        d’imprimer.
+      </p>
+    )}
+    <div class="actions-row">
+      <a class="button button--ghost" href="/admin/qr.svg" download="qr-la-voile-blanche.svg">
+        QR code (SVG)
+      </a>
+      <a class="button button--ghost" href="/admin/qr.png" download="qr-la-voile-blanche.png">
+        QR code (PNG)
+      </a>
+      <a class="button button--ghost" href="/admin/carte-table" target="_blank" rel="noopener">
+        Carte de table A6 (imprimer)
+      </a>
+    </div>
+  </section>
+</AdminLayout>

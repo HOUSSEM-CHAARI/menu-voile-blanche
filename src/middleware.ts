@@ -2,6 +2,7 @@ import { Readable } from 'node:stream'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { constants, createBrotliCompress, createGzip } from 'node:zlib'
 import { defineMiddleware } from 'astro:middleware'
+import { csrfMatches, readSession } from './lib/auth'
 
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
@@ -40,10 +41,48 @@ function compress(response: Response, acceptEncoding: string): Response {
   })
 }
 
+const isAdminPath = (path: string) => path === '/admin' || path.startsWith('/admin/')
+
+/**
+ * Every /admin page and action is protected here, on the server: no session → login page,
+ * and every POST must carry the session's CSRF token (form field `_csrf` or header).
+ */
+async function guardAdmin(context: Parameters<Parameters<typeof defineMiddleware>[0]>[0]) {
+  const { url, request, cookies, locals, redirect } = context
+  const secure = url.protocol === 'https:'
+  const user = await readSession(cookies, secure)
+  if (user) locals.user = user
+
+  if (url.pathname === '/admin/login')
+    return user && request.method === 'GET' ? redirect('/admin') : null
+  if (!user) {
+    if (request.method !== 'GET') return new Response('Non autorisé', { status: 401 })
+    return redirect(`/admin/login?next=${encodeURIComponent(url.pathname + url.search)}`)
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    let sent = request.headers.get('x-csrf-token')
+    if (!sent) {
+      const type = request.headers.get('content-type') ?? ''
+      if (type.includes('form'))
+        sent = String((await request.clone().formData()).get('_csrf') ?? '')
+    }
+    if (!csrfMatches(user.csrfToken, sent)) {
+      return new Response('Jeton de sécurité invalide. Rechargez la page.', { status: 403 })
+    }
+  }
+  return null
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
-  const response = await next()
+  const admin = isAdminPath(context.url.pathname)
+  const blocked = admin ? await guardAdmin(context) : null
+  const response = blocked ?? (await next())
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
     if (!response.headers.has(name)) response.headers.set(name, value)
+  }
+  if (admin) {
+    response.headers.set('Cache-Control', 'no-store')
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   }
   // Menu pages are rendered from the database on each request: never serve a stale copy.
   const type = response.headers.get('Content-Type') ?? ''

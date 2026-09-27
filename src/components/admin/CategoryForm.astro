@@ -1,0 +1,104 @@
+---
+import Csrf from './Csrf.astro'
+import LocalizedField from './LocalizedField.astro'
+import type { Category } from '../../lib/db/schema'
+import type { FieldErrors } from '../../lib/admin/forms'
+
+interface Props {
+  category: Partial<Category>
+  errors: FieldErrors
+  submitLabel: string
+}
+
+const { category, errors, submitLabel } = Astro.props
+const drafts = new Set(category.draftFields ?? [])
+---
+
+<form method="post" enctype="multipart/form-data" class="stack" data-dirty-guard>
+  <Csrf />
+  <section class="panel stack">
+    <LocalizedField
+      name="name"
+      label="Nom de la catégorie"
+      required
+      values={{ fr: category.nameFr, ar: category.nameAr, en: category.nameEn }}
+      errors={errors}
+      draft={drafts.size > 0}
+    />
+    {drafts.size > 0 && (
+      <label class="check">
+        <input type="checkbox" name="draftsReviewed" /> J’ai relu les traductions : retirer «
+        brouillon »
+      </label>
+    )}
+    {category.slug && <p class="muted">Adresse de la section : #{category.slug}</p>}
+    <div class="field">
+      <label for="layout">Présentation</label>
+      <select id="layout" name="layout">
+        <option value="standard" selected={category.layout !== 'compact'}>
+          Standard (photos, descriptions)
+        </option>
+        <option value="compact" selected={category.layout === 'compact'}>
+          Liste simple sans photo (ex. boissons)
+        </option>
+      </select>
+    </div>
+    <label class="check">
+      <input type="checkbox" name="isVisible" checked={category.isVisible ?? true} /> Visible sur le
+      menu
+    </label>
+  </section>
+
+  <section class="panel stack" data-cropper-root>
+    <h2>Image de couverture (facultatif)</h2>
+    {category.image && (
+      <div class="stack">
+        <img
+          class="photo-current"
+          src={category.image.jpg[0]?.src}
+          alt="Couverture actuelle"
+          width="320"
+          height="180"
+        />
+        <label class="check">
+          <input type="checkbox" name="removePhoto" /> Retirer l’image
+        </label>
+      </div>
+    )}
+    <div class="field">
+      <label for="photo">Choisir une image</label>
+      <input
+        id="photo"
+        name="photo"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+      />
+      <p class="hint">Format paysage conseillé, recadré en 16:9.</p>
+      {errors.photo && <p class="error">{errors.photo}</p>}
+    </div>
+    <div class="cropper" style="aspect-ratio: 16 / 9" data-cropper hidden></div>
+    <input
+      type="range"
+      min="1"
+      max="3"
+      step="0.01"
+      value="1"
+      data-zoom
+      hidden
+      aria-label="Zoom du cadrage"
+    />
+    <input type="hidden" name="cropLeft" />
+    <input type="hidden" name="cropTop" />
+    <input type="hidden" name="cropWidth" />
+    <input type="hidden" name="cropHeight" />
+  </section>
+
+  <div class="form-bar">
+    <button type="submit" name="action" value="save" class="button">
+      {submitLabel}
+    </button>
+    <a href="/admin/categories" class="button button--ghost">
+      Annuler
+    </a>
+  </div>
+</form>
