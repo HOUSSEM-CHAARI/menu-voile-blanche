@@ -1,0 +1,9 @@
+---
+import MenuPage from '../components/MenuPage.astro'
+import { isLocale } from '../lib/types'
+
+const { lang } = Astro.params
+if (!isLocale(lang)) return new Response(null, { status: 404 })
+---
+
+<MenuPage locale={lang} />

@@ -1,0 +1,25 @@
+---
+import { dir, ui } from '../lib/i18n'
+import type { Locale } from '../lib/types'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = ui(locale)
+---
+
+<!doctype html>
+<html lang={locale} dir={dir(locale)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{t.metaTitle}</title>
+    <meta name="description" content={t.metaDescription} />
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

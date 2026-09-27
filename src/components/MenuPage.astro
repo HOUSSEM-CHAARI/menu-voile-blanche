@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { pick, ui } from '../lib/i18n'
+import { getPublicMenu } from '../lib/menu'
+import { formatPrice } from '../lib/price'
+import type { Locale } from '../lib/types'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = ui(locale)
+const menu = await getPublicMenu()
+const name = (values: { fr: string; ar: string | null; en: string | null }) => pick(locale, values)
+---
+
+<BaseLayout locale={locale}>
+  <main id="menu">
+    <h1>{menu.settings.restaurantName}</h1>
+    {menu.sections.map(({ category, items }) => {
+      const title = name({ fr: category.nameFr, ar: category.nameAr, en: category.nameEn })
+      return (
+        <section id={category.slug}>
+          <h2 lang={title.lang}>{title.text}</h2>
+          <ul>
+            {items.map((item) => {
+              const itemName = name({ fr: item.nameFr, ar: item.nameAr, en: item.nameEn })
+              return (
+                <li id={item.slug} data-dish>
+                  <span lang={itemName.lang} data-dish-name>
+                    {itemName.text}
+                  </span>{' '}
+                  <span data-price>{formatPrice(item.price, locale, item.priceUnit)}</span>
+                  {!item.isAvailable && <span> · {t.soldOut}</span>}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )
+    })}
+  </main>
+</BaseLayout>
