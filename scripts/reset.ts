@@ -18,10 +18,13 @@ console.log(`✓ ${path} supprimé`)
 const { runMigrations } = await import('./lib/migrate')
 const { seed } = await import('./lib/seed')
 const { verify } = await import('./lib/verify')
+const { importTemporaryPhotos } = await import('./lib/photos')
 
 await runMigrations()
 const result = await seed()
 console.log(`✓ Base recréée : ${result.categories} catégories, ${result.items} plats`)
+const photos = await importTemporaryPhotos()
+console.log(`✓ ${photos} photos temporaires importées`)
 
 const problems = await verify()
 if (problems.length > 0) {

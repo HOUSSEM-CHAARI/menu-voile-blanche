@@ -42,7 +42,9 @@ const { slug, title, image, layout, dishes, locale, first } = Astro.props
       <DishRow
         dish={dish}
         locale={locale}
-        variant={layout === 'compact' ? 'compact' : dish.signature ? 'feature' : 'standard'}
+        variant={
+          layout === 'compact' ? 'compact' : dish.signature && dish.image ? 'feature' : 'standard'
+        }
       />
     ))}
   </div>

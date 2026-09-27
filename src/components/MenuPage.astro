@@ -30,7 +30,10 @@ const sections = menu.sections.map(({ category, items }) => ({
   dishes: items.map((item) => dishView(item, locale)),
 }))
 const allDishes = sections.flatMap((section) => section.dishes)
-const signatures = menu.signatures.map((item) => dishView(item, locale))
+// Signatures with a photo lead the strip; the rest keep their menu order.
+const signatures = menu.signatures
+  .map((item) => dishView(item, locale))
+  .sort((a, b) => Number(b.image !== null) - Number(a.image !== null))
 ---
 
 <BaseLayout locale={locale}>
