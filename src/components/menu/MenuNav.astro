@@ -1,0 +1,295 @@
+---
+/**
+ * Sticky navigation. Phones: one row of category chips with a search button; search opens
+ * in place with the quick filters. Desktop: a sticky side rail with search, filters and
+ * the category list. The active category follows the scroll (src/scripts/menu.ts).
+ */
+import Icon from '../Icon.astro'
+import { ui, type LocalizedText } from '../../lib/i18n'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  locale: Locale
+  categories: { slug: string; name: LocalizedText }[]
+}
+
+const { locale, categories } = Astro.props
+const t = ui(locale)
+const filters = [
+  { key: 'seafood', label: t.filterSeafood },
+  { key: 'fish', label: t.filterFish },
+  { key: 'meat', label: t.filterMeat },
+  { key: 'poultry', label: t.filterPoultry },
+  { key: 'forTwo', label: t.filterForTwo },
+]
+---
+
+<div class="menu-nav" data-menu-nav>
+  <search class="nav-search" data-search>
+    <div class="search-field">
+      <Icon name="search" class="search-icon" />
+      <label for="menu-search-input" class="sr-only">
+        {t.searchLabel}
+      </label>
+      <input
+        id="menu-search-input"
+        type="search"
+        placeholder={t.searchPlaceholder}
+        enterkeyhint="search"
+        autocomplete="off"
+        spellcheck="false"
+        data-search-input
+      />
+      <button type="button" class="icon-button search-close" data-search-close>
+        <Icon name="close" />
+        <span class="sr-only">{t.clearSearch}</span>
+      </button>
+    </div>
+    <div class="filters" role="group" aria-label={t.filters}>
+      {filters.map((filter) => (
+        <button type="button" class="chip" aria-pressed="false" data-filter={filter.key}>
+          {filter.label}
+        </button>
+      ))}
+    </div>
+  </search>
+
+  <nav class="nav-categories" aria-label={t.categories}>
+    <ul role="list" class="chips" data-category-scroller>
+      {categories.map((category) => (
+        <li>
+          <a
+            class="chip chip--category"
+            href={`#${category.slug}`}
+            lang={category.name.lang}
+            data-category-link={category.slug}
+          >
+            {category.name.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+    <button
+      type="button"
+      class="icon-button search-open"
+      aria-expanded="false"
+      aria-controls="menu-search-input"
+      data-search-open
+    >
+      <Icon name="search" />
+      <span class="sr-only">{t.searchLabel}</span>
+    </button>
+  </nav>
+</div>
+
+<style>
+  .menu-nav {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 20;
+    margin-inline: calc(-1 * var(--gutter));
+    padding-block: var(--space-2);
+    background: rgb(246 248 249 / 0.96);
+    border-block-end: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--foam);
+    color: var(--abyss);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+  .chip:hover {
+    border-color: var(--shutter);
+    color: var(--shutter);
+  }
+  .chip[aria-current='location'],
+  .chip[aria-pressed='true'] {
+    border-color: var(--shutter);
+    background: var(--shutter);
+    color: var(--foam);
+  }
+
+  .icon-button {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--foam);
+    color: var(--abyss);
+    cursor: pointer;
+  }
+  .icon-button:hover {
+    color: var(--shutter);
+    border-color: var(--shutter);
+  }
+
+  .nav-categories {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-inline-end: var(--gutter);
+  }
+  .chips {
+    display: flex;
+    flex: 1;
+    gap: var(--space-2);
+    margin: 0;
+    padding-inline: var(--gutter) var(--space-2);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to var(--fade-end, right), #000 calc(100% - 1.5rem), transparent);
+  }
+  :global([dir='rtl']) .chips {
+    --fade-end: left;
+  }
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Search: hidden until opened on phones, and whenever JavaScript is unavailable. */
+  .nav-search {
+    display: none;
+    gap: var(--space-2);
+    padding-inline: var(--gutter);
+  }
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .search-field :global(.search-icon) {
+    position: absolute;
+    inset-inline-start: 0.85rem;
+    color: var(--mist);
+    pointer-events: none;
+  }
+  input {
+    flex: 1;
+    min-width: 0;
+    height: var(--tap);
+    padding-inline: 2.6rem var(--space-3);
+    border: 1px solid rgb(13 36 54 / 0.28);
+    border-radius: 999px;
+    background: var(--foam);
+    font-size: 1rem;
+  }
+  input::placeholder {
+    color: var(--mist);
+    opacity: 1;
+  }
+  input:focus-visible {
+    outline: 2px solid var(--shutter);
+    outline-offset: 1px;
+  }
+  input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .filters {
+    display: flex;
+    gap: var(--space-2);
+    margin-inline: calc(-1 * var(--gutter));
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  :global(html:not(.js)) .search-open {
+    display: none;
+  }
+  .menu-nav.is-searching .nav-search {
+    display: grid;
+  }
+  .menu-nav.is-searching .nav-categories {
+    display: none;
+  }
+
+  /* Desktop: a sticky side rail. */
+  @media (min-width: 64rem) {
+    .menu-nav {
+      inset-block-start: var(--space-5);
+      display: grid;
+      align-content: start;
+      gap: var(--space-5);
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    :global(html.js) .nav-search,
+    :global(html.js) .menu-nav.is-searching .nav-search {
+      display: grid;
+      padding: 0;
+    }
+    .filters {
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+    }
+    .filters .chip {
+      padding-inline: var(--space-3);
+    }
+    .menu-nav.is-searching .nav-categories {
+      display: flex;
+    }
+    .search-close,
+    .search-open {
+      display: none;
+    }
+    .nav-categories {
+      padding: 0;
+    }
+    .chips {
+      flex-direction: column;
+      gap: 0;
+      padding: 0;
+      overflow: visible;
+      mask-image: none;
+      border-inline-start: 1px solid var(--line);
+    }
+    .chip--category {
+      width: 100%;
+      margin-inline-start: -1px;
+      padding-inline: var(--space-4) 0;
+      border: 0;
+      border-inline-start: 2px solid transparent;
+      border-radius: 0;
+      background: none;
+      font-weight: 400;
+      white-space: normal;
+    }
+    .chip--category[aria-current='location'] {
+      border-color: var(--shutter);
+      background: none;
+      color: var(--shutter);
+      font-weight: 600;
+    }
+  }
+</style>

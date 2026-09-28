@@ -1,0 +1,16 @@
+---
+import HistoryList from '../../components/admin/HistoryList.astro'
+import AdminLayout from '../../layouts/AdminLayout.astro'
+import { listHistory } from '../../lib/admin/data'
+
+if (!Astro.locals.user) return Astro.redirect('/admin/login')
+const entries = await listHistory(undefined, undefined, 300)
+---
+
+<AdminLayout title="Historique" section="history">
+  <div class="page-head">
+    <h1>Historique</h1>
+  </div>
+  <p class="muted">Qui a changé quoi, et quand. Les 300 dernières modifications.</p>
+  <HistoryList entries={entries} />
+</AdminLayout>

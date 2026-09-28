@@ -1,0 +1,87 @@
+---
+import { eq } from 'drizzle-orm'
+import Csrf from '../../components/admin/Csrf.astro'
+import AdminLayout from '../../layouts/AdminLayout.astro'
+import { parsePasswordForm, type FieldErrors } from '../../lib/admin/forms'
+import { audit } from '../../lib/audit'
+import { destroyOtherSessions, hashPassword, verifyPassword } from '../../lib/auth'
+import { db } from '../../lib/db/client'
+import { users } from '../../lib/db/schema'
+import { setFlash } from '../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+let errors: FieldErrors = {}
+
+if (Astro.request.method === 'POST') {
+  const { current, next, errors: found } = parsePasswordForm(await Astro.request.formData())
+  errors = found
+  const row = await db.select().from(users).where(eq(users.id, user.id)).get()
+  if (!errors.current && row && !(await verifyPassword(row.passwordHash, current))) {
+    errors.current = 'Mot de passe actuel incorrect.'
+  }
+  if (Object.keys(errors).length === 0) {
+    await db
+      .update(users)
+      .set({ passwordHash: await hashPassword(next) })
+      .where(eq(users.id, user.id))
+    await destroyOtherSessions(user.id, Astro.cookies)
+    await audit(user, 'password', 'user', user.id)
+    setFlash(Astro.cookies, 'Mot de passe modifié')
+    return Astro.redirect('/admin', 303)
+  }
+  Astro.response.status = 422
+}
+---
+
+<AdminLayout title="Mot de passe" section="password">
+  <div class="page-head">
+    <h1>Changer le mot de passe</h1>
+  </div>
+  <form method="post" class="panel stack" style="max-width: 28rem">
+    <Csrf />
+    <div class="field">
+      <label for="current">Mot de passe actuel</label>
+      <input
+        id="current"
+        name="current"
+        type="password"
+        autocomplete="current-password"
+        required
+        aria-invalid={errors.current ? 'true' : undefined}
+      />
+      {errors.current && <p class="error">{errors.current}</p>}
+    </div>
+    <div class="field">
+      <label for="next">Nouveau mot de passe</label>
+      <input
+        id="next"
+        name="next"
+        type="password"
+        autocomplete="new-password"
+        minlength="10"
+        required
+        aria-invalid={errors.next ? 'true' : undefined}
+      />
+      <p class="hint">Au moins 10 caractères. Les autres appareils connectés seront déconnectés.</p>
+      {errors.next && <p class="error">{errors.next}</p>}
+    </div>
+    <div class="field">
+      <label for="confirm">Confirmer</label>
+      <input
+        id="confirm"
+        name="confirm"
+        type="password"
+        autocomplete="new-password"
+        required
+        aria-invalid={errors.confirm ? 'true' : undefined}
+      />
+      {errors.confirm && <p class="error">{errors.confirm}</p>}
+    </div>
+    <div>
+      <button type="submit" class="button">
+        Changer le mot de passe
+      </button>
+    </div>
+  </form>
+</AdminLayout>

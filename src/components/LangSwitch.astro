@@ -1,0 +1,84 @@
+---
+import { SWITCHER, ui } from '../lib/i18n'
+import type { Locale } from '../lib/types'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const t = ui(locale)
+---
+
+<nav class="lang" aria-label={t.language}>
+  <ul role="list">
+    {SWITCHER.map((entry) => (
+      <li>
+        <a
+          href={`/${entry.locale}`}
+          hreflang={entry.locale}
+          lang={entry.locale}
+          aria-current={entry.locale === locale ? 'page' : undefined}
+          data-lang-link={entry.locale}
+        >
+          <span aria-hidden="true">{entry.short}</span>
+          <span class="sr-only">{entry.name}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<script>
+  import { LANG_COOKIE, LANG_COOKIE_MAX_AGE } from '../lib/lang'
+
+  // Remember the choice for the next visit to "/" and keep the open dish or section.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('[data-lang-link]')) {
+    link.addEventListener('click', () => {
+      document.cookie = `${LANG_COOKIE}=${link.dataset.langLink}; Max-Age=${LANG_COOKIE_MAX_AGE}; Path=/; SameSite=Lax`
+      if (location.hash) link.hash = location.hash
+    })
+  }
+</script>
+
+<style>
+  .lang ul {
+    display: flex;
+    align-items: center;
+    margin: 0;
+  }
+  .lang li + li::before {
+    content: '·';
+    color: var(--mist);
+    padding-inline: 0.1rem;
+  }
+  .lang a {
+    display: inline-grid;
+    place-items: center;
+    min-width: var(--tap);
+    min-height: var(--tap);
+    padding-inline: var(--space-2);
+    color: var(--abyss);
+    /* Each label is in its own script: the system font avoids downloading another page's fonts. */
+    font-family:
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    border-radius: var(--radius);
+  }
+  .lang a:hover {
+    color: var(--shutter);
+  }
+  .lang a[aria-current='page'] {
+    color: var(--shutter);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.45em;
+  }
+</style>

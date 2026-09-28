@@ -1,0 +1,85 @@
+---
+import '../styles/global.css'
+import BrandSprite from '../components/brand/BrandSprite.astro'
+import { dir, ui } from '../lib/i18n'
+import { jsonLdScript, ogLocale, type Alternate } from '../lib/seo'
+import type { Locale } from '../lib/types'
+
+interface Props {
+  locale: Locale
+  title?: string
+  description?: string
+  /** Absolute canonical URL. */
+  canonical?: string
+  alternates?: Alternate[]
+  /** Absolute URL of the Open Graph image. */
+  ogImage?: string
+  jsonLd?: unknown
+  noindex?: boolean
+}
+
+const { locale, canonical, alternates = [], ogImage, jsonLd, noindex = false } = Astro.props
+const t = ui(locale)
+const title = Astro.props.title ?? t.metaTitle
+const description = Astro.props.description ?? t.metaDescription
+
+// Fonts are not preloaded: measured on simulated 4G, preloads competed with the first photo
+// (the LCP element). Metric-matched fallbacks keep the late swap free of layout shift.
+---
+
+<!doctype html>
+<html lang={locale} dir={dir(locale)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {alternates.map((alt) => (
+      <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+    ))}
+    <meta name="theme-color" content="#f6f8f9" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta property="og:type" content="restaurant" />
+    <meta property="og:site_name" content="La Voile Blanche" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content={ogLocale(locale)} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {ogImage && (
+      <>
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
+
+    <script is:inline>
+      document.documentElement.classList.add('js')
+      // The hero animation plays once per visit, not on every language switch.
+      try {
+        if (sessionStorage.getItem('vb-seen')) document.documentElement.classList.add('seen')
+        sessionStorage.setItem('vb-seen', '1')
+      } catch {
+        document.documentElement.classList.add('seen')
+      }
+    </script>
+    {jsonLd !== undefined && <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} />}
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#menu">
+      {t.skipToMenu}
+    </a>
+    <BrandSprite />
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,58 @@
+---
+import { ui } from '../../lib/i18n'
+import type { DishView } from '../../lib/dish-view'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  dish: DishView
+  locale: Locale
+}
+
+const { dish, locale } = Astro.props
+const t = ui(locale)
+const hasBadges = dish.soldOut || dish.badges.length > 0
+---
+
+{hasBadges && (
+  <ul class="badges" role="list">
+    {dish.soldOut && <li class="badge badge--soldout">{t.soldOut}</li>}
+    {dish.badges.map((badge) => (
+      <li class:list={['badge', `badge--${badge.kind}`]}>{badge.text}</li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    margin: 0;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.625rem;
+    padding: 0 0.6rem;
+    border-radius: 999px;
+    background: var(--seaglass);
+    color: var(--abyss);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .badge--signature::before {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-inline-end: 0.4rem;
+    border-radius: 50%;
+    background: var(--sand);
+  }
+  .badge--soldout {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--abyss);
+  }
+</style>

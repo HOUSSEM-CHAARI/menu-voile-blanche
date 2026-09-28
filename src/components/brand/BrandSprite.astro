@@ -1,0 +1,16 @@
+---
+/**
+ * The logo, defined once per page and reused with <use>. The sail is a clean recreation of the
+ * printed-menu logo; the wordmark is "La Voile Blanche" in Caveat, outlined. Both are pending the
+ * official logo file.
+ */
+import { SAIL_MARKUP, SAIL_VIEWBOX } from '../../lib/brand-sail'
+import { WORDMARK } from '../../lib/brand-wordmark'
+---
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <symbol id="vb-sail" viewBox={SAIL_VIEWBOX} set:html={SAIL_MARKUP} />
+  <symbol id="vb-wordmark" viewBox={WORDMARK.viewBox}>
+    <path fill="currentColor" d={WORDMARK.d}></path>
+  </symbol>
+</svg>

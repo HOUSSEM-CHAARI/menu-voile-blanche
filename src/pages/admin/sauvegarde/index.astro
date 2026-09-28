@@ -1,0 +1,134 @@
+---
+import Csrf from '../../../components/admin/Csrf.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import {
+  applyImport,
+  parseBackup,
+  previewImport,
+  type ImportPreview,
+} from '../../../lib/admin/backup'
+import { can } from '../../../lib/auth'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+if (!can(user, 'backup')) return new Response('Action non autorisée.', { status: 403 })
+
+let error = ''
+let preview: ImportPreview | null = null
+let pendingJson = ''
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  if (form.get('action') === 'confirm') {
+    const { backup, error: parseError } = parseBackup(String(form.get('json') ?? ''))
+    if (backup) {
+      await applyImport(backup, user)
+      setFlash(Astro.cookies, 'Sauvegarde importée : le menu a été remplacé')
+      return Astro.redirect('/admin', 303)
+    }
+    error = parseError ?? 'Import impossible.'
+  } else {
+    const file = form.get('file')
+    if (!(file instanceof File) || file.size === 0) error = 'Choisissez un fichier .json.'
+    else if (file.size > 5 * 1024 * 1024) error = 'Fichier trop gros (5 Mo maximum).'
+    else {
+      pendingJson = await file.text()
+      const { backup, error: parseError } = parseBackup(pendingJson)
+      if (backup) preview = await previewImport(backup)
+      else error = parseError ?? 'Import impossible.'
+    }
+  }
+}
+---
+
+<AdminLayout title="Sauvegarde" section="backup">
+  <div class="page-head">
+    <h1>Sauvegarde</h1>
+  </div>
+
+  <section class="panel stack">
+    <h2>Exporter</h2>
+    <p>
+      Téléchargez une copie du menu à conserver (par exemple chaque semaine, sur une clé USB ou un
+      drive).
+    </p>
+    <div class="actions-row">
+      <a class="button" href="/admin/sauvegarde/menu.json">
+        Sauvegarde complète (.json)
+      </a>
+      <a class="button button--ghost" href="/admin/sauvegarde/plats.csv">
+        Liste des plats pour Excel (.csv)
+      </a>
+    </div>
+    <p class="muted">
+      La sauvegarde .json contient les textes, prix, catégories et réglages. Les photos restent dans
+      le dossier <code>data/uploads</code> (voir le README).
+    </p>
+  </section>
+
+  <section class="panel stack">
+    <h2>Restaurer une sauvegarde</h2>
+    {error && (
+      <p class="error" role="alert">
+        {error}
+      </p>
+    )}
+    {preview ? (
+      <form
+        method="post"
+        class="stack"
+        data-confirm="Remplacer tout le menu actuel par cette sauvegarde ?"
+      >
+        <Csrf />
+        <input type="hidden" name="action" value="confirm" />
+        <textarea name="json" hidden set:text={pendingJson} />
+        <p>
+          Sauvegarde du <strong>{new Date(preview.exportedAt).toLocaleString('fr-FR')}</strong> :{' '}
+          {preview.categories.incoming} catégories (aujourd’hui {preview.categories.current}),{' '}
+          {preview.dishes.incoming} plats (aujourd’hui {preview.dishes.current}).
+        </p>
+        {preview.added.length > 0 && <p>Plats ajoutés : {preview.added.join(', ')}</p>}
+        {preview.removed.length > 0 && (
+          <p class="error">Plats qui disparaîtront : {preview.removed.join(', ')}</p>
+        )}
+        {preview.priceChanges.length > 0 && (
+          <div>
+            <p>Prix modifiés :</p>
+            <ul>
+              {preview.priceChanges.map((change) => (
+                <li>
+                  {change.name} : {change.from} → {change.to}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div class="actions-row">
+          <button type="submit" class="button button--danger">
+            Confirmer et remplacer le menu
+          </button>
+          <a class="button button--ghost" href="/admin/sauvegarde">
+            Annuler
+          </a>
+        </div>
+      </form>
+    ) : (
+      <form method="post" enctype="multipart/form-data" class="stack">
+        <Csrf />
+        <div class="field">
+          <label for="file">Fichier de sauvegarde (.json)</label>
+          <input id="file" name="file" type="file" accept="application/json,.json" required />
+          <p class="hint">
+            Rien n’est remplacé avant la confirmation : vous verrez d’abord un aperçu.
+          </p>
+        </div>
+        <div>
+          <button type="submit" class="button button--ghost">
+            Voir l’aperçu
+          </button>
+        </div>
+      </form>
+    )}
+  </section>
+</AdminLayout>

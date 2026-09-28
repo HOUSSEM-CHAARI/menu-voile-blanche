@@ -1,0 +1,109 @@
+---
+import DishForm from '../../../components/admin/DishForm.astro'
+import HistoryList from '../../../components/admin/HistoryList.astro'
+import AdminLayout from '../../../layouts/AdminLayout.astro'
+import {
+  ActionError,
+  duplicateDish,
+  getDish,
+  listCategories,
+  listHistory,
+  trashDish,
+} from '../../../lib/admin/data'
+import { saveDish } from '../../../lib/admin/dish-save'
+import { formId, type FieldErrors } from '../../../lib/admin/forms'
+import { can } from '../../../lib/auth'
+import type { MenuItem } from '../../../lib/db/schema'
+import { setFlash } from '../../../lib/flash'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+const id = formId(Astro.params.id)
+const existing = id ? await getDish(id) : undefined
+if (!id || !existing) return Astro.rewrite('/404')
+
+let errors: FieldErrors = {}
+let dish: Partial<MenuItem> = existing
+let priceText: string | undefined
+
+if (Astro.request.method === 'POST') {
+  if (!can(user, 'menu:write')) return new Response('Action non autorisée.', { status: 403 })
+  const form = await Astro.request.formData()
+  const action = String(form.get('action') ?? 'save')
+  try {
+    if (action === 'duplicate') {
+      const copy = await duplicateDish(id, user)
+      setFlash(Astro.cookies, 'Plat dupliqué (masqué jusqu’à ce que vous le rendiez visible)')
+      return Astro.redirect(`/admin/plats/${copy.id}`, 303)
+    }
+    if (action === 'trash') {
+      await trashDish(id, user)
+      setFlash(Astro.cookies, 'Plat mis à la corbeille')
+      return Astro.redirect('/admin/plats', 303)
+    }
+    const result = await saveDish(form, user, existing)
+    if (result.dish) {
+      setFlash(Astro.cookies, 'Plat enregistré')
+      return Astro.redirect(`/admin/plats/${id}`, 303)
+    }
+    errors = result.errors
+    dish = result.submitted
+    priceText = result.priceText
+    Astro.response.status = 422
+  } catch (error) {
+    errors = { form: error instanceof ActionError ? error.message : 'Une erreur est survenue.' }
+  }
+}
+
+const [categories, history] = await Promise.all([listCategories(), listHistory('dish', id, 50)])
+---
+
+<AdminLayout title={existing.nameFr} section="dishes">
+  <div class="page-head">
+    <div>
+      <p>
+        <a href="/admin/plats">← Tous les plats</a>
+      </p>
+      <h1>{existing.nameFr}</h1>
+      {existing.deletedAt && <p class="tag tag--off">Dans la corbeille</p>}
+    </div>
+    <a class="button button--ghost" href={`/fr#${existing.slug}`} target="_blank" rel="noopener">
+      Voir sur le menu ↗
+    </a>
+  </div>
+  <DishForm
+    dish={dish}
+    priceText={priceText}
+    categories={categories}
+    errors={errors}
+    submitLabel="Enregistrer"
+  >
+    <Fragment slot="actions">
+      <button
+        type="submit"
+        name="action"
+        value="duplicate"
+        class="button button--ghost"
+        data-skip-price-check="1"
+        formnovalidate
+      >
+        Dupliquer
+      </button>
+      <button
+        type="submit"
+        name="action"
+        value="trash"
+        class="button button--danger"
+        data-confirm="Mettre ce plat à la corbeille ? Vous pourrez le restaurer."
+        data-skip-price-check="1"
+        formnovalidate
+      >
+        Supprimer
+      </button>
+    </Fragment>
+  </DishForm>
+  <section class="panel">
+    <h2>Historique de ce plat</h2>
+    <HistoryList entries={history} showEntity={false} />
+  </section>
+</AdminLayout>

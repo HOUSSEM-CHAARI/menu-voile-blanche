@@ -1,0 +1,44 @@
+---
+import HistoryList from '../../components/admin/HistoryList.astro'
+import AdminLayout from '../../layouts/AdminLayout.astro'
+import { dashboardStats } from '../../lib/admin/data'
+
+const stats = await dashboardStats()
+const cards = [
+  { label: 'Catégories', value: stats.categoriesCount, href: '/admin/categories' },
+  { label: 'Plats', value: stats.dishes, href: '/admin/plats' },
+  { label: 'Épuisés', value: stats.soldOut, href: '/admin/plats?statut=soldout' },
+  { label: 'À vérifier', value: stats.review, href: '/admin/plats?statut=review' },
+  { label: 'Sans arabe', value: stats.missingAr, href: '/admin/plats' },
+  { label: 'Sans anglais', value: stats.missingEn, href: '/admin/plats' },
+  { label: 'Sans photo', value: stats.noPhoto, href: '/admin/plats?statut=nophoto' },
+  { label: 'Photos temporaires', value: stats.temporary, href: '/admin/plats' },
+  { label: 'Corbeille', value: stats.trash, href: '/admin/corbeille' },
+]
+---
+
+<AdminLayout title="Tableau de bord" section="dashboard">
+  <div class="page-head">
+    <h1>Bonjour {Astro.locals.user?.username}</h1>
+    <a class="button" href="/admin/plats/nouveau">
+      Ajouter un plat
+    </a>
+  </div>
+  <ul class="stats" role="list">
+    {cards.map((card) => (
+      <li>
+        <a class="stat" href={card.href}>
+          <strong>{card.value}</strong>
+          <span>{card.label}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+  <section class="panel">
+    <h2>Dernières modifications</h2>
+    <HistoryList entries={stats.recent} />
+    <p>
+      <a href="/admin/historique">Tout l’historique</a>
+    </p>
+  </section>
+</AdminLayout>

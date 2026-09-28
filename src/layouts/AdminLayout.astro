@@ -1,0 +1,85 @@
+---
+import '../styles/global.css'
+import '../styles/admin.css'
+import BrandSprite from '../components/brand/BrandSprite.astro'
+import { takeFlash } from '../lib/flash'
+
+interface Props {
+  title: string
+  /** Current section, highlighted in the navigation. */
+  section?:
+    'dashboard' | 'dishes' | 'categories' | 'trash' | 'history' | 'settings' | 'backup' | 'password'
+}
+
+const { title, section } = Astro.props
+const user = Astro.locals.user
+const flash = takeFlash(Astro.cookies)
+const nav = [
+  { key: 'dashboard', href: '/admin', label: 'Tableau de bord' },
+  { key: 'dishes', href: '/admin/plats', label: 'Plats' },
+  { key: 'categories', href: '/admin/categories', label: 'Catégories' },
+  { key: 'settings', href: '/admin/reglages', label: 'Réglages' },
+  { key: 'trash', href: '/admin/corbeille', label: 'Corbeille' },
+  { key: 'history', href: '/admin/historique', label: 'Historique' },
+  { key: 'backup', href: '/admin/sauvegarde', label: 'Sauvegarde' },
+  { key: 'password', href: '/admin/mot-de-passe', label: 'Mot de passe' },
+]
+---
+
+<!doctype html>
+<html lang="fr" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} — Back office La Voile Blanche</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {user && <meta name="csrf-token" content={user.csrfToken} />}
+  </head>
+  <body class="admin">
+    <BrandSprite />
+    {user && (
+      <header class="admin-header">
+        <a class="admin-brand" href="/admin">
+          <svg width="22" height="28" aria-hidden="true">
+            <use href="#vb-sail" />
+          </svg>
+          <span>Back office</span>
+        </a>
+        <nav aria-label="Back office">
+          <ul role="list">
+            {nav.map((item) => (
+              <li>
+                <a href={item.href} aria-current={item.key === section ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div class="admin-user">
+          <a href="/fr" target="_blank" rel="noopener">
+            Voir le menu ↗
+          </a>
+          <form method="post" action="/admin/logout">
+            <input type="hidden" name="_csrf" value={user.csrfToken} />
+            <button type="submit" class="link-button">
+              Déconnexion
+            </button>
+          </form>
+        </div>
+      </header>
+    )}
+    <main id="menu" class="admin-main">
+      <slot />
+    </main>
+    {flash && (
+      <p class:list={['toast', `toast--${flash.type}`]} role="status" data-toast>
+        {flash.text}
+      </p>
+    )}
+    <script>
+      import '../scripts/admin'
+    </script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+---
+import MenuPage from '../components/MenuPage.astro'
+import { LANG_COOKIE } from '../lib/lang'
+
+// "/" opens French unless the guest chose another language before.
+const saved = Astro.cookies.get(LANG_COOKIE)?.value
+if (saved === 'ar' || saved === 'en') return Astro.redirect(`/${saved}`, 302)
+Astro.response.headers.set('Vary', 'Cookie')
+---
+
+<MenuPage locale="fr" />

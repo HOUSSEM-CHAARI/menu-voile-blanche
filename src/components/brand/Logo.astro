@@ -1,0 +1,47 @@
+---
+import { WORDMARK } from '../../lib/brand-wordmark'
+
+interface Props {
+  /** Width of the wordmark in px; the sail scales with it. */
+  size?: number
+  layout?: 'stacked' | 'inline'
+  class?: string
+}
+
+const { size = 200, layout = 'stacked', class: className } = Astro.props
+const wordmarkHeight = Math.round((size * WORDMARK.height) / WORDMARK.width)
+const sailHeight = layout === 'stacked' ? Math.round(size * 0.46) : Math.round(wordmarkHeight * 1.5)
+const sailWidth = Math.round((sailHeight * 96) / 120)
+---
+
+<span class:list={['logo', `logo--${layout}`, className]} aria-hidden="true">
+  <svg class="logo-sail" width={sailWidth} height={sailHeight}>
+    <use href="#vb-sail"></use>
+  </svg>
+  <svg class="logo-wordmark" width={size} height={wordmarkHeight}>
+    <use href="#vb-wordmark"></use>
+  </svg>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+  }
+  .logo--stacked {
+    flex-direction: column;
+    gap: 0.35em;
+  }
+  .logo--inline {
+    gap: 0.6em;
+  }
+  .logo svg {
+    flex: none;
+    overflow: visible;
+  }
+  /* The wordmark is Latin script: keep its shape in right-to-left pages. */
+  .logo-wordmark {
+    direction: ltr;
+  }
+</style>

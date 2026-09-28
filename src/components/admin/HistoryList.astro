@@ -1,0 +1,63 @@
+---
+import { ACTIONS, dateTime, ENTITIES, fieldLabel, formatValue } from '../../lib/admin/labels'
+
+interface Props {
+  entries: {
+    id: number
+    username: string
+    action: string
+    entity: string
+    entityId: number | null
+    before: Record<string, unknown> | null
+    after: Record<string, unknown> | null
+    createdAt: Date
+  }[]
+  showEntity?: boolean
+}
+
+const { entries, showEntity = true } = Astro.props
+---
+
+{entries.length === 0 ? (
+  <p class="muted">Aucune modification pour l’instant.</p>
+) : (
+  <ul class="rows" role="list">
+    {entries.map((entry) => {
+      const keys = Object.keys({ ...(entry.before ?? {}), ...(entry.after ?? {}) }).filter(
+        (key) => !['order', 'from', 'categoryId'].includes(key) || entry.action === 'update',
+      )
+      return (
+        <li class="row" style="grid-template-columns: minmax(0, 1fr)">
+          <div>
+            <strong>{ACTIONS[entry.action] ?? entry.action}</strong>
+            {showEntity && (
+              <span class="muted">
+                {' '}
+                · {ENTITIES[entry.entity] ?? entry.entity}
+                {entry.entityId && entry.entity === 'dish' && (
+                  <>
+                    {' '}
+                    <a href={`/admin/plats/${entry.entityId}`}>#{entry.entityId}</a>
+                  </>
+                )}
+              </span>
+            )}
+            <div class="row-meta">
+              {dateTime(entry.createdAt)} · {entry.username}
+            </div>
+            {entry.before && entry.after && keys.length > 0 && (
+              <div class="history-change">
+                {keys.slice(0, 8).map((key) => (
+                  <span>
+                    {fieldLabel(key)} : <del>{formatValue(key, entry.before?.[key])}</del> →{' '}
+                    <ins>{formatValue(key, entry.after?.[key])}</ins>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </li>
+      )
+    })}
+  </ul>
+)}

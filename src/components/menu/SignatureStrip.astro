@@ -1,0 +1,139 @@
+---
+import Badges from './Badges.astro'
+import DishImage from './DishImage.astro'
+import PriceTag from './PriceTag.astro'
+import type { DishView } from '../../lib/dish-view'
+import { ui } from '../../lib/i18n'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  dishes: DishView[]
+  locale: Locale
+}
+
+const { dishes, locale } = Astro.props
+const t = ui(locale)
+---
+
+{dishes.length > 0 && (
+  <section class="signatures" aria-labelledby="signatures-title" data-signatures>
+    <h2 id="signatures-title" class="wrap">
+      {t.signatures}
+    </h2>
+    <ul class="signature-list" role="list">
+      {dishes.map((dish, index) => (
+        <li class:list={['signature', { 'is-soldout': dish.soldOut }]}>
+          <DishImage
+            class="signature-photo"
+            image={dish.image}
+            alt={dish.imageAlt}
+            sizes="(min-width: 64rem) 17rem, min(72vw, 17rem)"
+            priority={index === 0}
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            illustrationLabel={dish.imageSource === 'temporary' ? t.photoIllustration : null}
+          />
+          <div class="signature-body">
+            <h3 lang={dish.name.lang}>
+              <a href={`#${dish.slug}`} data-open-dish={dish.slug}>
+                {dish.name.text}
+              </a>
+            </h3>
+            <PriceTag price={dish.price} />
+            <Badges
+              dish={{ ...dish, badges: dish.badges.filter((badge) => badge.kind !== 'signature') }}
+              locale={locale}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+<style>
+  .signatures {
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-5) var(--space-6);
+  }
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: 1.625rem;
+    line-height: var(--leading-tight);
+  }
+  .signature-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(72vw, 17rem);
+    gap: var(--space-4);
+    margin: 0;
+    padding-inline: var(--gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+  .signature-list::-webkit-scrollbar {
+    display: none;
+  }
+  .signature {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    scroll-snap-align: start;
+  }
+  .signature :global(.signature-photo) {
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .signature-body {
+    display: grid;
+    gap: var(--space-1);
+    justify-items: start;
+  }
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-dish);
+    font-size: var(--text-dish);
+    line-height: var(--leading-tight);
+  }
+  h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  h3 a:focus-visible {
+    outline: none;
+  }
+  .signature:has(a:focus-visible) {
+    outline: 2px solid var(--shutter);
+    outline-offset: 4px;
+    border-radius: var(--radius);
+  }
+  .is-soldout :global(.signature-photo) {
+    filter: grayscale(1);
+    opacity: 0.6;
+  }
+  @media (hover: hover) {
+    .signature:hover h3 {
+      color: var(--shutter);
+    }
+  }
+  @media (min-width: 64rem) {
+    .signature-list {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      width: min(100% - 2 * var(--gutter), var(--page));
+      margin-inline: auto;
+      padding-inline: 0;
+      overflow: visible;
+    }
+  }
+</style>

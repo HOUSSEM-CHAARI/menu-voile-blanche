@@ -1,0 +1,81 @@
+---
+import DishImage from './DishImage.astro'
+import DishRow from './DishRow.astro'
+import WaveLine from '../brand/WaveLine.astro'
+import type { DishView } from '../../lib/dish-view'
+import type { LocalizedText } from '../../lib/i18n'
+import type { CategoryLayout, ImageMeta, Locale } from '../../lib/types'
+
+interface Props {
+  slug: string
+  title: LocalizedText
+  image: ImageMeta | null
+  layout: CategoryLayout
+  dishes: DishView[]
+  locale: Locale
+  first: boolean
+}
+
+const { slug, title, image, layout, dishes, locale, first } = Astro.props
+---
+
+<section
+  id={slug}
+  class:list={['category', `category--${layout}`]}
+  aria-labelledby={`${slug}-title`}
+  data-section
+>
+  {!first && <WaveLine class="category-wave" />}
+  <h2 id={`${slug}-title`} lang={title.lang}>
+    {title.text}
+  </h2>
+  {image && (
+    <DishImage
+      class="category-cover"
+      image={image}
+      alt={title}
+      sizes="(min-width: 64rem) 45rem, calc(100vw - 2rem)"
+    />
+  )}
+  <div class="dishes">
+    {dishes.map((dish) => (
+      <DishRow
+        dish={dish}
+        locale={locale}
+        variant={
+          layout === 'compact' ? 'compact' : dish.signature && dish.image ? 'feature' : 'standard'
+        }
+      />
+    ))}
+  </div>
+</section>
+
+<style>
+  .category {
+    display: grid;
+    gap: var(--space-3);
+    padding-block: var(--space-6) var(--space-3);
+  }
+  .category:first-of-type {
+    padding-block-start: var(--space-5);
+  }
+  :global(.category-wave) {
+    margin-block-end: var(--space-5);
+  }
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: var(--text-title);
+    line-height: var(--leading-tight);
+  }
+  .category :global(.category-cover) {
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .category :global(.category-cover img) {
+    aspect-ratio: 16 / 9;
+  }
+  .dishes > :global(:last-child) {
+    border-block-end: 0;
+  }
+</style>

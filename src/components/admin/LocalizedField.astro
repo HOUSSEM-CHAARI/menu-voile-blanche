@@ -1,0 +1,81 @@
+---
+/**
+ * The same field in French (required when `required`), Arabic (right-to-left) and English,
+ * with a "traduction manquante" badge when empty and "brouillon" when the text is a draft.
+ */
+interface Props {
+  name: string
+  label: string
+  values: {
+    fr?: string | null | undefined
+    ar?: string | null | undefined
+    en?: string | null | undefined
+  }
+  errors?: Record<string, string>
+  multiline?: boolean
+  required?: boolean
+  draft?: boolean
+  hint?: string | undefined
+}
+
+const {
+  name,
+  label,
+  values,
+  errors = {},
+  multiline = false,
+  required = false,
+  draft = false,
+  hint,
+} = Astro.props
+const langs = [
+  { key: 'Fr', code: 'fr', label: 'Français', dir: 'ltr', value: values.fr ?? '' },
+  { key: 'Ar', code: 'ar', label: 'العربية', dir: 'rtl', value: values.ar ?? '' },
+  { key: 'En', code: 'en', label: 'English', dir: 'ltr', value: values.en ?? '' },
+] as const
+---
+
+<fieldset class="field">
+  <legend>{label}</legend>
+  {hint && <p class="hint">{hint}</p>}
+  <div class="grid-3">
+    {langs.map((lang) => {
+      const id = `${name}${lang.key}`
+      const error = errors[id]
+      const missing = lang.code !== 'fr' && !lang.value.trim() && Boolean(values.fr)
+      return (
+        <div class="field">
+          <label for={id}>
+            {lang.label}
+            {lang.code === 'fr' && required && ' *'}{' '}
+            {missing && <span class="tag tag--warn">traduction manquante</span>}
+            {draft && lang.value.trim() && <span class="tag tag--draft">brouillon</span>}
+          </label>
+          {multiline ? (
+            <textarea
+              id={id}
+              name={id}
+              dir={lang.dir}
+              lang={lang.code}
+              required={required && lang.code === 'fr'}
+              aria-invalid={error ? 'true' : undefined}
+              set:text={lang.value}
+            />
+          ) : (
+            <input
+              id={id}
+              name={id}
+              type="text"
+              dir={lang.dir}
+              lang={lang.code}
+              value={lang.value}
+              required={required && lang.code === 'fr'}
+              aria-invalid={error ? 'true' : undefined}
+            />
+          )}
+          {error && <p class="error">{error}</p>}
+        </div>
+      )
+    })}
+  </div>
+</fieldset>

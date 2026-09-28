@@ -1,0 +1,78 @@
+---
+import Csrf from '../../components/admin/Csrf.astro'
+import AdminLayout from '../../layouts/AdminLayout.astro'
+import { ActionError, listTrash, purgeDish, restoreDish } from '../../lib/admin/data'
+import { formId } from '../../lib/admin/forms'
+import { dateTime } from '../../lib/admin/labels'
+import { can } from '../../lib/auth'
+import { setFlash } from '../../lib/flash'
+import { formatPrice } from '../../lib/price'
+
+const user = Astro.locals.user
+if (!user) return Astro.redirect('/admin/login')
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  const id = formId(String(form.get('id') ?? ''))
+  try {
+    if (!can(user, 'menu:write')) throw new ActionError('Action non autorisée.')
+    if (!id) throw new ActionError('Plat introuvable.')
+    if (form.get('action') === 'restore') {
+      await restoreDish(id, user)
+      setFlash(Astro.cookies, 'Plat restauré')
+    } else if (form.get('action') === 'purge') {
+      await purgeDish(id, user)
+      setFlash(Astro.cookies, 'Plat supprimé définitivement')
+    }
+  } catch (error) {
+    setFlash(
+      Astro.cookies,
+      error instanceof ActionError ? error.message : 'Une erreur est survenue.',
+      'error',
+    )
+  }
+  return Astro.redirect('/admin/corbeille', 303)
+}
+
+const rows = await listTrash()
+---
+
+<AdminLayout title="Corbeille" section="trash">
+  <div class="page-head">
+    <h1>Corbeille</h1>
+  </div>
+  <p class="muted">Les plats supprimés restent ici jusqu’à leur suppression définitive.</p>
+  {rows.length === 0 ? (
+    <p class="panel">La corbeille est vide.</p>
+  ) : (
+    <ul class="rows" role="list">
+      {rows.map(({ dish, category }) => (
+        <li class="row" style="grid-template-columns: minmax(0, 1fr) auto">
+          <div>
+            <span class="row-title">{dish.nameFr}</span>
+            <div class="row-meta">
+              {category.nameFr} · {formatPrice(dish.price, 'fr', dish.priceUnit)}
+              {dish.deletedAt && <> · supprimé le {dateTime(dish.deletedAt)}</>}
+            </div>
+          </div>
+          <form method="post" class="actions-row">
+            <Csrf />
+            <input type="hidden" name="id" value={dish.id} />
+            <button type="submit" name="action" value="restore" class="button button--small">
+              Restaurer
+            </button>
+            <button
+              type="submit"
+              name="action"
+              value="purge"
+              class="button button--small button--danger"
+              data-confirm="Supprimer définitivement ce plat et sa photo ? C’est irréversible."
+            >
+              Supprimer définitivement
+            </button>
+          </form>
+        </li>
+      ))}
+    </ul>
+  )}
+</AdminLayout>
