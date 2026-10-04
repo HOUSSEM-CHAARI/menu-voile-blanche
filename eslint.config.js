@@ -9,6 +9,7 @@ export default [
       'dist/',
       'node_modules/',
       '.astro/',
+      '.vercel/',
       'drizzle/',
       'docs/',
       'playwright-report/',

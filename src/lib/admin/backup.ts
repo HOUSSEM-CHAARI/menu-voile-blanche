@@ -86,9 +86,9 @@ const imageMeta = z
     width: z.number(),
     height: z.number(),
     lqip: z.string(),
-    avif: z.array(z.object({ width: z.number(), src: z.string().startsWith('/media/') })),
-    webp: z.array(z.object({ width: z.number(), src: z.string().startsWith('/media/') })),
-    jpg: z.array(z.object({ width: z.number(), src: z.string().startsWith('/media/') })),
+    avif: z.array(z.object({ width: z.number(), src: z.url().or(z.string().startsWith('/media/')) })),
+    webp: z.array(z.object({ width: z.number(), src: z.url().or(z.string().startsWith('/media/')) })),
+    jpg: z.array(z.object({ width: z.number(), src: z.url().or(z.string().startsWith('/media/')) })),
   })
   .nullable()
 
