@@ -1,0 +1,651 @@
+---
+/**
+ * The guest's order ("panier"): a floating bar, the order sheet and the waiter screen.
+ * Nothing is sent online. The guest builds the order on the phone and shows it to the waiter,
+ * who sees each dish in French whatever the guest's language. Behaviour: src/scripts/cart.ts.
+ */
+import Icon from '../Icon.astro'
+import type { DishView } from '../../lib/dish-view'
+import { ui } from '../../lib/i18n'
+import { jsonLdScript } from '../../lib/seo'
+import type { Locale } from '../../lib/types'
+
+interface Props {
+  dishes: DishView[]
+  locale: Locale
+}
+
+const { dishes, locale } = Astro.props
+const t = ui(locale)
+const unique = [...new Map(dishes.map((dish) => [dish.slug, dish])).values()]
+const data = {
+  t: {
+    cartItems: t.cartItems,
+    added: t.added,
+    inCart: t.inCart(0).replace('0', '{n}'),
+    addToCart: t.addToCart('{name}'),
+    chooseOptions: t.chooseOptions('{name}'),
+    increase: t.increase,
+    decrease: t.decrease,
+    weighed: t.weighed,
+    clearConfirm: t.clearConfirm,
+    tableNumber: t.tableNumber,
+  },
+  dishes: Object.fromEntries(
+    unique.map((dish) => [
+      dish.slug,
+      {
+        name: dish.name.text,
+        lang: dish.name.lang,
+        nameFr: dish.nameFr,
+        price: dish.millimes,
+        per100g: dish.price.per !== null,
+        soldOut: dish.soldOut,
+        thumb: dish.image?.jpg[0]?.src ?? null,
+      },
+    ]),
+  ),
+}
+---
+
+<button type="button" class="cart-bar" data-cart-open hidden>
+  <span class="cart-bar-icon">
+    <Icon name="bag" size={22} />
+    <span class="cart-bar-count" data-cart-count></span>
+  </span>
+  <span class="cart-bar-label">{t.viewCart}</span>
+  <span class="cart-bar-total price" data-cart-bar-total></span>
+</button>
+
+<p class="cart-toast" role="status" data-cart-toast></p>
+
+<dialog class="cart" aria-labelledby="cart-title" data-cart>
+  <div class="cart-panel">
+    <header class="cart-head">
+      <div>
+        <h2 id="cart-title">{t.cart}</h2>
+        <p class="cart-sub" data-cart-sub></p>
+      </div>
+      <button type="button" class="round-button" data-cart-close>
+        <Icon name="close" />
+        <span class="sr-only">{t.close}</span>
+      </button>
+    </header>
+
+    {/* eslint-disable-next-line astro/jsx-a11y/no-noninteractive-tabindex */}
+    <div class="cart-body" tabindex="0">
+      <p class="cart-hint">{t.cartHint}</p>
+      <p class="cart-empty" data-cart-empty>
+        {t.cartEmpty}
+      </p>
+      <ul class="cart-lines" role="list" data-cart-lines></ul>
+
+      <div class="cart-extra" data-cart-extra>
+        <div class="cart-field cart-field--table">
+          <label for="cart-table">{t.table}</label>
+          <input
+            id="cart-table"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            autocomplete="off"
+            placeholder={t.tablePlaceholder}
+            data-cart-table
+          />
+        </div>
+        <div class="cart-field">
+          <label for="cart-note">{t.note}</label>
+          <textarea
+            id="cart-note"
+            rows="2"
+            maxlength="300"
+            placeholder={t.notePlaceholder}
+            data-cart-note
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <footer class="cart-foot" data-cart-foot>
+      <div class="cart-total">
+        <span>{t.total}</span>
+        <strong class="price" data-cart-total></strong>
+      </div>
+      <p class="cart-weighed" data-cart-weighed hidden>
+        {t.weighed}
+      </p>
+      <button type="button" class="cart-primary" data-waiter-open>
+        <Icon name="waiter" size={22} />
+        {t.showWaiter}
+      </button>
+      <button type="button" class="cart-secondary" data-cart-clear>
+        <Icon name="trash" size={18} />
+        {t.clearCart}
+      </button>
+      <p class="cart-notice">{t.cartNotice}</p>
+    </footer>
+  </div>
+</dialog>
+
+<dialog class="waiter" aria-labelledby="waiter-title" data-waiter>
+  <div class="waiter-panel">
+    <header class="waiter-head">
+      <svg width="28" height="35" aria-hidden="true">
+        <use href="#vb-sail"></use>
+      </svg>
+      <div>
+        <p class="waiter-kicker">La Voile Blanche · {t.order}</p>
+        <h2 id="waiter-title" data-waiter-title>
+          {t.order}
+        </h2>
+      </div>
+      <p class="waiter-time" data-waiter-time></p>
+    </header>
+    <ol class="waiter-lines" role="list" data-waiter-lines></ol>
+    <p class="waiter-note" data-waiter-note hidden></p>
+    <div class="waiter-total">
+      <span>{t.total}</span>
+      <strong class="price" data-waiter-total></strong>
+    </div>
+    <p class="waiter-weighed" data-waiter-weighed hidden>
+      {t.weighed}
+    </p>
+    <div class="waiter-actions">
+      <button type="button" class="cart-secondary" data-waiter-back>
+        <Icon name="arrow" size={18} class="back-arrow" />
+        {t.back}
+      </button>
+      <button type="button" class="cart-primary" data-waiter-done>
+        <Icon name="check" size={20} />
+        {t.orderTaken}
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<script type="application/json" id="cart-data" set:html={jsonLdScript(data)} />
+<style>
+  /* ─── Floating bar ─────────────────────────────────────────────────────── */
+  .cart-bar {
+    position: fixed;
+    inset-inline: var(--space-3);
+    inset-block-end: calc(var(--space-3) + env(safe-area-inset-bottom));
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: auto;
+    max-width: 30rem;
+    min-height: 3.5rem;
+    margin-inline: auto;
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+    border: 0;
+    border-radius: 999px;
+    background: var(--abyss);
+    color: var(--foam);
+    font-weight: 600;
+    box-shadow: var(--shadow-float);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :global([dir='rtl']) .cart-bar {
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  }
+  .cart-bar:focus-visible {
+    outline: 3px solid var(--sand);
+    outline-offset: 3px;
+  }
+  .cart-bar-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.12);
+  }
+  .cart-bar-count {
+    position: absolute;
+    inset-block-start: -0.2rem;
+    inset-inline-end: -0.2rem;
+    display: grid;
+    place-items: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding-inline: 0.3rem;
+    border-radius: 999px;
+    background: var(--sand);
+    color: var(--abyss);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .cart-bar-label {
+    flex: 1;
+    text-align: start;
+  }
+  .cart-bar-total {
+    font-size: 1.0625rem;
+  }
+  .cart-bar.is-bumped {
+    animation: bar-bump 0.4s var(--ease-out);
+  }
+  @keyframes bar-bump {
+    40% {
+      transform: scale(1.04);
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cart-bar:not([hidden]) {
+      animation: bar-in 0.35s var(--ease-out);
+    }
+  }
+  @keyframes bar-in {
+    from {
+      opacity: 0;
+      transform: translateY(1.5rem);
+    }
+  }
+  :global(html.has-cart) :global(body) {
+    padding-block-end: 5.5rem;
+  }
+
+  .cart-toast {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: calc(5.25rem + env(safe-area-inset-bottom));
+    z-index: 41;
+    width: fit-content;
+    margin-inline: auto;
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    background: var(--foam);
+    color: var(--abyss);
+    font-weight: 600;
+    box-shadow: var(--shadow-float);
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition:
+      opacity 0.2s,
+      transform 0.2s var(--ease-out);
+    pointer-events: none;
+  }
+  .cart-toast:not(:empty) {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ─── Order sheet ──────────────────────────────────────────────────────── */
+  .cart,
+  .waiter {
+    width: 100%;
+    max-width: 34rem;
+    max-height: 100dvh;
+    margin: auto auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--abyss);
+    overflow: visible;
+  }
+  .cart::backdrop,
+  .waiter::backdrop {
+    background: rgb(8 26 41 / 0.5);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  .cart-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    max-height: min(94dvh, 52rem);
+    border-radius: 24px 24px 0 0;
+    background: var(--sail);
+    box-shadow: 0 -12px 40px rgb(13 36 54 / 0.2);
+    overflow: hidden;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cart[open] .cart-panel {
+      animation: sheet-up 0.28s var(--ease-out);
+    }
+    .waiter[open] .waiter-panel {
+      animation: pop-in 0.28s var(--ease-out);
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+  .cart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--gutter) var(--space-3);
+    border-block-end: 1px solid var(--line);
+  }
+  .cart-head h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: 1.625rem;
+    line-height: var(--leading-tight);
+  }
+  .cart-sub {
+    color: var(--mist);
+    font-size: 0.9375rem;
+  }
+  .round-button {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--tap);
+    height: var(--tap);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--foam);
+    color: var(--abyss);
+    cursor: pointer;
+  }
+  .cart-body {
+    display: grid;
+    align-content: start;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--gutter);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    outline-offset: -3px;
+  }
+  .cart-hint {
+    padding: var(--space-3) var(--space-4);
+    border-radius: 14px;
+    background: var(--seaglass);
+    font-size: 0.9375rem;
+  }
+  .cart-empty {
+    padding-block: var(--space-5);
+    color: var(--mist);
+    text-align: center;
+  }
+  .cart-lines {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+  }
+  .cart-lines :global(li) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3);
+    border-radius: 16px;
+    background: var(--foam);
+    box-shadow: var(--shadow-card);
+  }
+  .cart-lines :global(.line-thumb) {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 12px;
+    object-fit: cover;
+    background: var(--seaglass);
+  }
+  .cart-lines :global(.line-name) {
+    font-family: var(--font-serif);
+    font-weight: var(--w-dish);
+    line-height: var(--leading-tight);
+  }
+  .cart-lines :global(.line-meta) {
+    color: var(--mist);
+    font-size: 0.875rem;
+  }
+  .cart-lines :global(.line-price) {
+    font-size: 0.9375rem;
+  }
+  .cart-lines :global(.stepper) {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--sail);
+  }
+  .cart-lines :global(.stepper button) {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--abyss);
+    cursor: pointer;
+  }
+  .cart-lines :global(.stepper output) {
+    min-width: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .cart-extra {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .cart-field {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .cart-field label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  .cart-field input,
+  .cart-field textarea {
+    width: 100%;
+    min-height: var(--tap);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid rgb(13 36 54 / 0.25);
+    border-radius: 12px;
+    background: var(--foam);
+    color: var(--abyss);
+    font: inherit;
+    font-size: 1rem;
+    resize: vertical;
+  }
+  .cart-field--table input {
+    max-width: 8rem;
+  }
+  .cart-field input::placeholder,
+  .cart-field textarea::placeholder {
+    color: var(--mist);
+    opacity: 1;
+  }
+  .cart-foot {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line);
+    background: var(--foam);
+  }
+  .cart-total,
+  .waiter-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-weight: 600;
+  }
+  .cart-total strong {
+    font-size: 1.375rem;
+  }
+  .cart-weighed,
+  .waiter-weighed {
+    color: var(--mist);
+    font-size: 0.875rem;
+  }
+  .cart-primary,
+  .cart-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 52px;
+    padding-inline: var(--space-4);
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .cart-primary {
+    border: 0;
+    background: var(--abyss);
+    color: var(--foam);
+    font-size: 1.0625rem;
+    box-shadow: 0 10px 24px -12px rgb(13 36 54 / 0.7);
+  }
+  .cart-primary:hover {
+    background: var(--shutter);
+  }
+  .cart-secondary {
+    min-height: var(--tap);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--abyss);
+  }
+  .cart-notice {
+    color: var(--mist);
+    font-size: 0.8125rem;
+    text-align: center;
+  }
+  [data-cart-foot][hidden],
+  [data-cart-extra][hidden] {
+    display: none;
+  }
+
+  /* ─── Waiter screen: large, high contrast, readable at arm's length ───── */
+  .waiter {
+    max-width: 40rem;
+    height: 100dvh;
+    margin: 0 auto;
+  }
+  .waiter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    height: 100%;
+    padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--gutter)
+      calc(var(--space-4) + env(safe-area-inset-bottom));
+    background: var(--foam);
+    overflow-y: auto;
+  }
+  .waiter-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block-end: var(--space-4);
+    border-block-end: 2px solid var(--abyss);
+  }
+  .waiter-head div {
+    flex: 1;
+  }
+  .waiter-kicker {
+    color: var(--mist);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .waiter-head h2 {
+    font-family: var(--font-serif);
+    font-weight: var(--w-title);
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+  .waiter-time {
+    color: var(--mist);
+    font-variant-numeric: tabular-nums;
+  }
+  .waiter-lines {
+    display: grid;
+    margin: 0;
+    padding: 0;
+  }
+  .waiter-lines :global(li) {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+    border-block-end: 1px solid var(--line);
+  }
+  .waiter-lines :global(.qty) {
+    display: grid;
+    place-items: center;
+    height: 2.75rem;
+    border-radius: 12px;
+    background: var(--abyss);
+    color: var(--foam);
+    font-size: 1.375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .waiter-lines :global(.waiter-fr) {
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .waiter-lines :global(.waiter-local),
+  .waiter-lines :global(.waiter-choice) {
+    color: var(--mist);
+    font-size: 1rem;
+  }
+  .waiter-lines :global(.waiter-choice) {
+    color: var(--abyss);
+    font-weight: 600;
+  }
+  .waiter-note {
+    padding: var(--space-3) var(--space-4);
+    border-inline-start: 4px solid var(--sand);
+    border-radius: 12px;
+    background: var(--sail);
+    font-size: 1.125rem;
+    white-space: pre-wrap;
+  }
+  .waiter-total strong {
+    font-size: 1.5rem;
+  }
+  .waiter-actions {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-2);
+    margin-block-start: auto;
+    padding-block-start: var(--space-3);
+  }
+  .waiter-actions :global(.back-arrow) {
+    transform: scaleX(-1);
+  }
+  :global([dir='rtl']) .waiter-actions :global(.back-arrow) {
+    transform: none;
+  }
+
+  @media (min-width: 48rem) {
+    .cart {
+      margin: auto;
+    }
+    .cart-panel {
+      border-radius: 24px;
+      max-height: min(88dvh, 52rem);
+    }
+    .waiter {
+      height: auto;
+      max-height: 92dvh;
+      margin: auto;
+    }
+    .waiter-panel {
+      border-radius: 24px;
+      max-height: 92dvh;
+    }
+  }
+</style>

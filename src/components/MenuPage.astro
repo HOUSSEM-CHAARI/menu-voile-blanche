@@ -1,6 +1,7 @@
 ---
 import Footer from './Footer.astro'
 import Hero from './Hero.astro'
+import CartSheet from './menu/CartSheet.astro'
 import CategorySection from './menu/CategorySection.astro'
 import DishDetail from './menu/DishDetail.astro'
 import DishSheet from './menu/DishSheet.astro'
@@ -85,6 +86,7 @@ const signatures = menu.signatures
   </main>
   <Footer locale={locale} info={info} />
   <DishSheet locale={locale} />
+  <CartSheet dishes={allDishes} locale={locale} />
   {allDishes.map((dish) => (
     <DishDetail dish={dish} locale={locale} />
   ))}
@@ -92,6 +94,7 @@ const signatures = menu.signatures
 
 <script>
   import '../scripts/menu'
+  import '../scripts/cart'
 </script>
 
 <style>

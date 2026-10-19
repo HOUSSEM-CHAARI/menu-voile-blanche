@@ -1,5 +1,6 @@
 ---
 import Csrf from '../../../components/admin/Csrf.astro'
+import Icon from '../../../components/Icon.astro'
 import AdminLayout from '../../../layouts/AdminLayout.astro'
 import {
   ActionError,
@@ -67,6 +68,21 @@ const [categoryList, rows] = await Promise.all([
   listDishes({ q, categoryId, status }),
 ])
 const filtered = Boolean(q || status)
+const tabs = [
+  { value: undefined, label: 'Tous' },
+  { value: 'soldout', label: 'Épuisés' },
+  { value: 'hidden', label: 'Masqués' },
+  { value: 'review', label: 'À vérifier' },
+  { value: 'nophoto', label: 'Sans photo' },
+] as const
+const tabHref = (value: string | undefined) => {
+  const search = new URLSearchParams()
+  if (q) search.set('q', q)
+  if (categoryId) search.set('categorie', String(categoryId))
+  if (value) search.set('statut', value)
+  const query = search.toString()
+  return query ? `/admin/plats?${query}` : '/admin/plats'
+}
 const groups = categoryList
   .map((category) => ({
     category,
@@ -77,62 +93,79 @@ const groups = categoryList
 
 <AdminLayout title="Plats" section="dishes">
   <div class="page-head">
-    <h1>
-      Plats <span class="muted">({rows.length})</span>
-    </h1>
+    <div>
+      <h1>
+        Plats <span class="muted">({rows.length})</span>
+      </h1>
+      <p>Touchez « Disponible » pour marquer un plat épuisé pendant le service.</p>
+    </div>
     <a class="button" href="/admin/plats/nouveau">
-      Ajouter un plat
+      <Icon name="plus" size={18} /> Ajouter un plat
     </a>
   </div>
 
-  <form method="get" class="panel grid-3" role="search" aria-label="Filtrer les plats">
-    <div class="field">
-      <label for="q">Rechercher</label>
-      <input id="q" name="q" type="search" value={q} placeholder="Nom en FR, AR ou EN" />
-    </div>
-    <div class="field">
-      <label for="categorie">Catégorie</label>
-      <select id="categorie" name="categorie">
-        <option value="">Toutes</option>
-        {categoryList.map((c) => (
-          <option value={c.id} selected={c.id === categoryId}>
-            {c.nameFr}
+  <div class="toolbar">
+    <form method="get" class="panel toolbar-fields" role="search" aria-label="Filtrer les plats">
+      <div class="field">
+        <label for="q">Rechercher</label>
+        <div class="search-input">
+          <Icon name="search" size={18} />
+          <input id="q" name="q" type="search" value={q} placeholder="Nom en FR, AR ou EN" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="categorie">Catégorie</label>
+        <select id="categorie" name="categorie">
+          <option value="">Toutes</option>
+          {categoryList.map((c) => (
+            <option value={c.id} selected={c.id === categoryId}>
+              {c.nameFr}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div class="field">
+        <label for="statut">État</label>
+        <select id="statut" name="statut">
+          <option value="">Tous</option>
+          <option value="soldout" selected={status === 'soldout'}>
+            Épuisés
           </option>
-        ))}
-      </select>
-    </div>
-    <div class="field">
-      <label for="statut">État</label>
-      <select id="statut" name="statut">
-        <option value="">Tous</option>
-        <option value="soldout" selected={status === 'soldout'}>
-          Épuisés
-        </option>
-        <option value="hidden" selected={status === 'hidden'}>
-          Masqués
-        </option>
-        <option value="review" selected={status === 'review'}>
-          À vérifier
-        </option>
-        <option value="nophoto" selected={status === 'nophoto'}>
-          Sans photo
-        </option>
-      </select>
-    </div>
-    <div class="actions-row">
-      <button type="submit" class="button button--ghost">
-        Filtrer
-      </button>
-      {(q || categoryId || status) && <a href="/admin/plats">Tout afficher</a>}
-    </div>
-  </form>
+          <option value="hidden" selected={status === 'hidden'}>
+            Masqués
+          </option>
+          <option value="review" selected={status === 'review'}>
+            À vérifier
+          </option>
+          <option value="nophoto" selected={status === 'nophoto'}>
+            Sans photo
+          </option>
+        </select>
+      </div>
+      <div class="actions-row">
+        <button type="submit" class="button button--ghost">
+          Filtrer
+        </button>
+        {(q || categoryId || status) && <a href="/admin/plats">Tout afficher</a>}
+      </div>
+    </form>
+    <nav class="tabs" aria-label="État des plats">
+      {tabs.map((tab) => (
+        <a href={tabHref(tab.value)} aria-current={tab.value === status ? 'page' : undefined}>
+          {tab.label}
+        </a>
+      ))}
+    </nav>
+  </div>
 
   {rows.length === 0 && <p class="panel">Aucun plat ne correspond.</p>}
 
   <div data-sortable={filtered ? undefined : '/admin/plats/ordre'}>
     {groups.map(({ category, rows: dishes }) => (
       <section>
-        <h2 class="row-group-title">{category.nameFr}</h2>
+        <h2 class="row-group-title">
+          {category.nameFr} <span class="count">{dishes.length}</span>
+        </h2>
         <ul class="rows" role="list" data-group-id={category.id}>
           {dishes.map(({ dish }, index) => (
             <li class="row" data-id={dish.id} draggable={filtered ? undefined : 'true'}>
@@ -141,19 +174,21 @@ const groups = categoryList
                   class="row-thumb"
                   src={dish.image.jpg[0]?.src}
                   alt=""
-                  width="56"
-                  height="42"
+                  width="64"
+                  height="48"
                   loading="lazy"
                 />
               ) : (
-                <span class="row-thumb" aria-hidden="true" />
+                <span class="row-thumb" aria-hidden="true">
+                  <Icon name="image" size={18} />
+                </span>
               )}
               <div>
                 <a class="row-title" href={`/admin/plats/${dish.id}`}>
                   {dish.nameFr}
                 </a>
                 <div class="row-meta">
-                  <span>{formatPrice(dish.price, 'fr', dish.priceUnit)}</span>
+                  <span class="price">{formatPrice(dish.price, 'fr', dish.priceUnit)}</span>
                   {!dish.isVisible && <span class="tag tag--off">masqué</span>}
                   {dish.needsOwnerReview && <span class="tag tag--warn">à vérifier</span>}
                   {dish.imageSource === 'temporary' && <span class="tag">photo temporaire</span>}
@@ -180,7 +215,7 @@ const groups = categoryList
                   </button>
                 </form>
                 {!filtered && (
-                  <form method="post" class="actions-row">
+                  <form method="post" class="actions-row order-buttons">
                     <Csrf />
                     <input type="hidden" name="id" value={dish.id} />
                     <button
@@ -191,7 +226,7 @@ const groups = categoryList
                       disabled={index === 0}
                       aria-label={`Monter ${dish.nameFr}`}
                     >
-                      ↑
+                      <Icon name="up" size={16} />
                     </button>
                     <button
                       type="submit"
@@ -201,7 +236,7 @@ const groups = categoryList
                       disabled={index === dishes.length - 1}
                       aria-label={`Descendre ${dish.nameFr}`}
                     >
-                      ↓
+                      <Icon name="down" size={16} />
                     </button>
                   </form>
                 )}
@@ -213,7 +248,9 @@ const groups = categoryList
     ))}
   </div>
   {!filtered && (
-    <p class="muted">Astuce : sur ordinateur, glissez-déposez une ligne pour changer l’ordre.</p>
+    <p class="muted" style="margin-block-start: var(--space-4)">
+      Astuce : sur ordinateur, glissez-déposez une ligne pour changer l’ordre.
+    </p>
   )}
 </AdminLayout>
 
@@ -224,6 +261,13 @@ const groups = categoryList
   .row > .actions-row {
     grid-column: 1 / -1;
     justify-content: flex-end;
+  }
+  .order-buttons {
+    gap: var(--space-1);
+  }
+  .order-buttons .button {
+    width: 2.25rem;
+    padding: 0;
   }
   @media (min-width: 48rem) {
     .row {

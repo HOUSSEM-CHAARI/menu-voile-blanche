@@ -1,6 +1,6 @@
 import type { SessionUser } from '../auth'
 import type { Category } from '../db/schema'
-import { deleteImage, ImageError, processImage } from '../images'
+import { deleteImage, photoErrorMessage, processImage } from '../images'
 import { createCategory, updateCategory } from './data'
 import { parseCategoryForm, type FieldErrors } from './forms'
 import { readCrop, readUpload } from './http'
@@ -17,7 +17,7 @@ export async function saveCategory(
     const upload = await readUpload(form, 'photo')
     if (upload) image = await processImage(upload, 'cover', readCrop(form))
   } catch (error) {
-    errors.photo = error instanceof ImageError ? error.message : 'Image illisible.'
+    errors.photo = photoErrorMessage(error)
   }
   if (!parsed.data || Object.keys(errors).length > 0) {
     return { errors, submitted: { ...existing, ...(parsed.data ?? {}) } as Partial<Category> }

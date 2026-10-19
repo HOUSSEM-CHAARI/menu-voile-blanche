@@ -89,10 +89,10 @@ const filters = [
     z-index: 20;
     margin-inline: calc(-1 * var(--gutter));
     padding-block: var(--space-2);
-    background: rgb(246 248 249 / 0.96);
+    background: rgb(246 248 249 / 0.82);
     border-block-end: 1px solid var(--line);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: saturate(1.6) blur(16px);
+    backdrop-filter: saturate(1.6) blur(16px);
   }
 
   .chip {
@@ -121,9 +121,10 @@ const filters = [
   }
   .chip[aria-current='location'],
   .chip[aria-pressed='true'] {
-    border-color: var(--shutter);
-    background: var(--shutter);
+    border-color: var(--abyss);
+    background: var(--abyss);
     color: var(--foam);
+    box-shadow: 0 6px 16px -8px rgb(13 36 54 / 0.6);
   }
 
   .icon-button {

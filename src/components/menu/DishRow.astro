@@ -1,14 +1,16 @@
 ---
 /**
- * One dish on the menu, laid out like the printed carte: name, dotted leader, price.
- *  - standard: small 4:3 thumbnail when the dish has a photo
+ * One dish on the menu, as a card: name, short description, price and an "add" button.
+ *  - standard: photo on the end side when the dish has one
  *  - feature:  signature dishes, with a large photo (or the sail placeholder)
- *  - compact:  drinks and other simple items, no photo, no description
- * The whole row opens the detail sheet.
+ *  - compact:  drinks and other simple items, one line, no photo, no description
+ * The whole card opens the detail sheet; the + button adds the dish to the guest's order
+ * (dishes with choices open the sheet so the guest picks one first).
  */
 import Badges from './Badges.astro'
 import DishImage from './DishImage.astro'
 import PriceTag from './PriceTag.astro'
+import Icon from '../Icon.astro'
 import type { DishView } from '../../lib/dish-view'
 import { ui } from '../../lib/i18n'
 import type { Locale } from '../../lib/types'
@@ -23,6 +25,7 @@ const { dish, locale, variant } = Astro.props
 const t = ui(locale)
 const illustration = dish.imageSource === 'temporary' ? t.photoIllustration : null
 const showIncludes = variant === 'feature' && dish.includes.items.length > 0
+const hasChoices = dish.options.length > 0
 ---
 
 <article
@@ -42,20 +45,13 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
       illustrationLabel={illustration}
     />
   )}
-  {variant === 'standard' && dish.image && (
-    <DishImage class="dish-thumb" image={dish.image} alt={dish.imageAlt} sizes="6rem" />
-  )}
 
   <div class="dish-body">
-    <div class="dish-head">
-      <h3 class="dish-name" lang={dish.name.lang} data-dish-name>
-        <a href={`#${dish.slug}`} class="dish-link" data-open-dish={dish.slug}>
-          {dish.name.text}
-        </a>
-      </h3>
-      <span class="leader" aria-hidden="true"></span>
-      <PriceTag price={dish.price} class="dish-price" />
-    </div>
+    <h3 class="dish-name" lang={dish.name.lang} data-dish-name>
+      <a href={`#${dish.slug}`} class="dish-link" data-open-dish={dish.slug}>
+        {dish.name.text}
+      </a>
+    </h3>
 
     {variant !== 'compact' && dish.description && (
       <p class="dish-description" lang={dish.description.lang}>
@@ -86,8 +82,41 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
         {dish.note.text}
       </p>
     )}
-    <Badges dish={dish} locale={locale} />
+    {variant !== 'compact' && <Badges dish={dish} locale={locale} />}
+
+    <div class="dish-foot">
+      <PriceTag price={dish.price} class="dish-price" />
+      {variant === 'compact' && dish.soldOut && <Badges dish={dish} locale={locale} />}
+      {!dish.soldOut &&
+        (hasChoices ? (
+          <button
+            type="button"
+            class="add"
+            data-add-slug={dish.slug}
+            data-open-dish={dish.slug}
+            aria-label={t.chooseOptions(dish.name.text)}
+          >
+            <Icon name="plus" size={20} />
+            <span class="add-qty" data-add-qty></span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            class="add"
+            data-add={dish.slug}
+            data-add-slug={dish.slug}
+            aria-label={t.addToCart(dish.name.text)}
+          >
+            <Icon name="plus" size={20} />
+            <span class="add-qty" data-add-qty></span>
+          </button>
+        ))}
+    </div>
   </div>
+
+  {variant === 'standard' && dish.image && (
+    <DishImage class="dish-thumb" image={dish.image} alt={dish.imageAlt} sizes="7rem" />
+  )}
 </article>
 
 <style>
@@ -95,30 +124,32 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-    padding-block: var(--space-4);
-    border-block-end: 1px solid var(--line);
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid rgb(13 36 54 / 0.07);
+    border-radius: var(--radius-card);
+    background: var(--foam);
+    box-shadow: var(--shadow-card);
+    transition:
+      transform 0.2s var(--ease-out),
+      box-shadow 0.2s var(--ease-out);
   }
   .dish:has(.dish-thumb) {
-    grid-template-columns: clamp(4.5rem, 21vw, 6rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) clamp(5.5rem, 26vw, 7rem);
     align-items: start;
   }
   .dish:has(.dish-link:focus-visible) {
     outline: 2px solid var(--shutter);
-    outline-offset: 4px;
-    border-radius: var(--radius);
+    outline-offset: 3px;
   }
   .dish-body {
     display: grid;
+    align-content: start;
     gap: var(--space-2);
     min-width: 0;
+    height: 100%;
   }
 
-  .dish-head {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--space-3);
-  }
   .dish-name {
     min-width: 0;
     font-family: var(--font-serif);
@@ -133,28 +164,21 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
   .dish-link:focus-visible {
     outline: none;
   }
-  /* The whole row is the link's hit area. */
+  /* The whole card is the link's hit area. */
   .dish-link::after {
     content: '';
     position: absolute;
     inset: 0;
-  }
-  .leader {
-    flex: 1 1 1.5rem;
-    min-width: 1.5rem;
-    height: 0.25rem;
-    margin-block-end: 0.45em;
-    visibility: hidden;
-    background: radial-gradient(circle, var(--mist) 0.9px, transparent 1.2px) center / 6px 4px
-      repeat-x;
-    opacity: 0.7;
-  }
-  .dish-price {
-    font-size: 1.0625rem;
-    line-height: var(--leading-tight);
+    border-radius: inherit;
   }
   .dish-description {
+    display: -webkit-box;
+    overflow: hidden;
     color: var(--mist);
+    font-size: 0.975rem;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
   }
   .dish-options {
     color: var(--abyss);
@@ -175,13 +199,88 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
     font-size: 0.9375rem;
   }
 
-  .dish-thumb {
-    border-radius: var(--radius);
-    overflow: hidden;
+  .dish-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-block-start: auto;
+    padding-block-start: var(--space-1);
+  }
+  .dish-price {
+    font-size: 1.0625rem;
+    line-height: var(--leading-tight);
   }
 
+  /* The add button sits above the card's link overlay. */
+  .add {
+    position: relative;
+    z-index: 1;
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--abyss);
+    color: var(--foam);
+    box-shadow: 0 6px 14px -6px rgb(13 36 54 / 0.6);
+    cursor: pointer;
+    transition:
+      transform 0.15s var(--ease-out),
+      background-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .add:hover {
+    background: var(--shutter);
+  }
+  .add:active {
+    transform: scale(0.92);
+  }
+  .add:focus-visible {
+    outline: 2px solid var(--shutter);
+    outline-offset: 3px;
+  }
+  .add-qty {
+    position: absolute;
+    inset-block-start: -0.35rem;
+    inset-inline-end: -0.35rem;
+    display: grid;
+    place-items: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding-inline: 0.3rem;
+    border: 2px solid var(--foam);
+    border-radius: 999px;
+    background: var(--sand);
+    color: var(--abyss);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .add-qty:empty {
+    display: none;
+  }
+  .add.is-bumped {
+    animation: bump 0.35s var(--ease-out);
+  }
+  @keyframes bump {
+    40% {
+      transform: scale(1.18);
+    }
+  }
+
+  .dish-thumb {
+    border-radius: 14px;
+    overflow: hidden;
+  }
   .dish--feature :global(.dish-photo) {
-    border-radius: var(--radius);
+    margin-block-start: calc(-1 * var(--space-4));
+    margin-inline: calc(-1 * var(--space-4));
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
     overflow: hidden;
   }
   .dish--feature .dish-name {
@@ -189,9 +288,28 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
   }
 
   .dish--compact {
-    padding-block: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+  .dish--compact .dish-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .dish--compact .dish-foot {
+    margin: 0;
+    padding: 0;
+  }
+  .dish--compact .dish-name {
+    font-size: 1.0625rem;
+  }
+  .dish--compact .add {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
+  .is-soldout {
+    background: rgb(255 255 255 / 0.6);
+    box-shadow: none;
+  }
   .is-soldout .dish-name,
   .is-soldout .dish-price,
   .is-soldout .dish-description {
@@ -204,20 +322,29 @@ const showIncludes = variant === 'feature' && dish.includes.items.length > 0
   }
 
   @media (hover: hover) {
-    .dish:hover .dish-name {
-      color: var(--shutter);
+    .dish:not(.is-soldout):hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 1px 2px rgb(13 36 54 / 0.05),
+        0 18px 36px -18px rgb(13 36 54 / 0.35);
     }
   }
 
-  /* The printed menu's dotted leaders, on screens wide enough for them. */
   @media (min-width: 48rem) {
-    .leader {
-      visibility: visible;
-    }
     .dish--feature {
       grid-template-columns: 17rem minmax(0, 1fr);
       gap: var(--space-5);
-      align-items: start;
+      align-items: stretch;
+    }
+    .dish--feature :global(.dish-photo) {
+      margin-block: calc(-1 * var(--space-4));
+      margin-inline: calc(-1 * var(--space-4)) 0;
+      border-radius: 0;
+      border-start-start-radius: var(--radius-card);
+      border-end-start-radius: var(--radius-card);
+    }
+    .dish--feature :global(.dish-photo img) {
+      height: 100%;
     }
   }
 </style>

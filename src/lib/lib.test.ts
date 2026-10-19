@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { formatPrice, isImplausiblePrice, parsePriceInput, priceForSchema } from './price'
 import { matchesQuery, normalizeForSearch } from './search'
 import { slugify } from './slug'
+import { clampCrop } from './crop'
 
 const NBSP = ' '
 
@@ -82,5 +83,23 @@ describe('slugify', () => {
     ['Eau minérale Safia 1 L', 'eau-minerale-safia-1-l'],
   ])('%s → %s', (input, expected) => {
     expect(slugify(input)).toBe(expected)
+  })
+})
+
+describe('clampCrop', () => {
+  it('pulls a frame that overshoots by a rounding pixel back inside the photo', () => {
+    expect(clampCrop({ left: 1702, top: 0, width: 2331, height: 1748 }, 4032, 3024)).toEqual({
+      left: 1702,
+      top: 0,
+      width: 2330,
+      height: 1748,
+    })
+  })
+  it('keeps a frame that already fits', () => {
+    const frame = { left: 10, top: 20, width: 400, height: 300 }
+    expect(clampCrop(frame, 1000, 800)).toEqual(frame)
+  })
+  it('gives up on frames that are too small once clamped', () => {
+    expect(clampCrop({ left: 990, top: 0, width: 400, height: 300 }, 1000, 800)).toBeUndefined()
   })
 })

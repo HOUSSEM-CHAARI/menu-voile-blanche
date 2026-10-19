@@ -1,6 +1,7 @@
 ---
 import Csrf from './Csrf.astro'
 import LocalizedField from './LocalizedField.astro'
+import Icon from '../Icon.astro'
 import type { Category } from '../../lib/db/schema'
 import type { FieldErrors } from '../../lib/admin/forms'
 
@@ -66,22 +67,44 @@ const drafts = new Set(category.draftFields ?? [])
       </div>
     )}
     <div class="field">
-      <label for="photo">Choisir une image</label>
-      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
+      <label for="photo" class="dropzone" data-dropzone>
+        <span class="dropzone-icon">
+          <Icon name="upload" />
+        </span>
+        <strong>Choisir une image</strong>
+        <span>
+          Glissez une image ici ou <u>parcourez</u>
+        </span>
+      </label>
+      <input
+        id="photo"
+        name="photo"
+        type="file"
+        class="file-input"
+        accept="image/jpeg,image/png,image/webp"
+      />
       <p class="hint">Format paysage conseillé, recadré en 16:9.</p>
       {errors.photo && <p class="error">{errors.photo}</p>}
     </div>
+    <p class="photo-busy" data-photo-busy hidden>
+      Préparation de l’image…
+    </p>
     <div class="cropper" style="aspect-ratio: 16 / 9" data-cropper hidden></div>
-    <input
-      type="range"
-      min="1"
-      max="3"
-      step="0.01"
-      value="1"
-      data-zoom
-      hidden
-      aria-label="Zoom du cadrage"
-    />
+    <label class="field" data-zoom-label hidden>
+      <span class="label">Zoom</span>
+      <input
+        type="range"
+        min="1"
+        max="3"
+        step="0.01"
+        value="1"
+        data-zoom
+        aria-label="Zoom du cadrage"
+      />
+    </label>
+    <button type="button" class="button button--ghost button--small" data-photo-reset hidden>
+      Annuler cette image
+    </button>
     <input type="hidden" name="cropLeft" />
     <input type="hidden" name="cropTop" />
     <input type="hidden" name="cropWidth" />

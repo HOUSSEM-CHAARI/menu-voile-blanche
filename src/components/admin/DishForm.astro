@@ -1,6 +1,7 @@
 ---
 import Csrf from './Csrf.astro'
 import LocalizedField from './LocalizedField.astro'
+import Icon from '../Icon.astro'
 import type { Category, MenuItem } from '../../lib/db/schema'
 import type { FieldErrors } from '../../lib/admin/forms'
 import { TAGS, type ItemOption } from '../../lib/types'
@@ -44,7 +45,7 @@ const errorList = Object.values(errors)
 <form method="post" enctype="multipart/form-data" class="stack" data-dirty-guard>
   <Csrf />
   {errorList.length > 0 && (
-    <div class="panel" role="alert">
+    <div class="panel" role="alert" tabindex="-1" data-form-errors>
       <strong>Le plat n’a pas été enregistré :</strong>
       <ul>
         {errorList.map((error) => (
@@ -65,233 +66,285 @@ const errorList = Object.values(errors)
     </div>
   )}
 
-  <section class="panel stack">
-    <h2>Nom et textes</h2>
-    <LocalizedField
-      name="name"
-      label="Nom du plat"
-      required
-      values={{ fr: dish.nameFr, ar: dish.nameAr, en: dish.nameEn }}
-      errors={errors}
-      draft={drafts.has('nameEn') || drafts.has('nameAr')}
-    />
-    <LocalizedField
-      name="description"
-      label="Description courte"
-      multiline
-      hint="Une phrase, sans inventer d’ingrédients."
-      values={{ fr: dish.descriptionFr, ar: dish.descriptionAr, en: dish.descriptionEn }}
-      errors={errors}
-      draft={drafts.has('description')}
-    />
-    <LocalizedField
-      name="note"
-      label="Note de service (facultatif)"
-      multiline
-      hint="Ex. « Pesé et annoncé à table ». Affichée dans le détail du plat."
-      values={{ fr: dish.noteFr, ar: dish.noteAr, en: dish.noteEn }}
-      errors={errors}
-      draft={drafts.has('note')}
-    />
-    {drafts.size > 0 && (
-      <label class="check">
-        <input type="checkbox" name="draftsReviewed" /> J’ai relu les textes : retirer la mention «
-        brouillon »
-      </label>
-    )}
-  </section>
-
-  <section class="panel stack">
-    <h2>Prix et catégorie</h2>
-    <div class="grid-3">
-      <div class="field">
-        <label for="price">Prix en dinars *</label>
-        <input
-          id="price"
-          name="price"
-          type="text"
-          inputmode="decimal"
-          value={price}
-          required
-          aria-describedby="price-preview price-hint"
-          aria-invalid={errors.price ? 'true' : undefined}
-          data-price-input="price-preview"
-        />
-        <p class="hint" id="price-hint">
-          Ex. 42 · 42,500 · 42,000 (= 42 DT)
-        </p>
-        <p class="hint" id="price-preview" aria-live="polite"></p>
-      </div>
-      <div class="field">
-        <label for="priceUnit">Le prix s’entend</label>
-        <select id="priceUnit" name="priceUnit">
-          <option value="item" selected={dish.priceUnit !== 'per100g'}>
-            par plat
-          </option>
-          <option value="per100g" selected={dish.priceUnit === 'per100g'}>
-            aux 100 g
-          </option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="categoryId">Catégorie *</label>
-        <select
-          id="categoryId"
-          name="categoryId"
-          required
-          aria-invalid={errors.categoryId ? 'true' : undefined}
-        >
-          {categories.map((c) => (
-            <option value={c.id} selected={c.id === dish.categoryId}>
-              {c.nameFr}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div class="field">
-        <label for="serves">Nombre de personnes</label>
-        <input id="serves" name="serves" type="number" min="1" max="20" value={dish.serves ?? ''} />
-        <p class="hint">Laisser vide pour un plat standard.</p>
-      </div>
-      <div class="field">
-        <label for="kind">Type (pour les filtres)</label>
-        <select id="kind" name="kind">
-          {kinds.map(([value, label]) => (
-            <option value={value} selected={dish.kind === value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-    <fieldset class="field">
-      <legend>Étiquettes</legend>
-      <div class="actions-row">
-        {TAGS.map((tag) => (
-          <label class="check">
-            <input type="checkbox" name="tags" value={tag} checked={dish.tags?.includes(tag)} />{' '}
-            {tagLabels[tag]}
-          </label>
-        ))}
-      </div>
-    </fieldset>
-    <div class="actions-row">
-      <label class="check">
-        <input type="checkbox" name="isAvailable" checked={dish.isAvailable ?? true} /> Disponible
-      </label>
-      <label class="check">
-        <input type="checkbox" name="isVisible" checked={dish.isVisible ?? true} /> Visible sur le
-        menu
-      </label>
-    </div>
-  </section>
-
-  <section class="panel stack">
-    <h2>Composition et options</h2>
-    <LocalizedField
-      name="includes"
-      label="Ce que comprend le plat"
-      multiline
-      hint="Un élément par ligne, dans le même ordre pour chaque langue."
-      values={{
-        fr: dish.includes?.fr.join('\n'),
-        ar: dish.includes?.ar?.join('\n'),
-        en: dish.includes?.en?.join('\n'),
-      }}
-      errors={errors}
-      draft={drafts.has('includes')}
-    />
-    {[0, 1].map((index) => (
-      <fieldset class="field">
-        <legend>Option {index + 1} (ex. « Préparation : sautés / panés »)</legend>
-        {errors[`option${index}`] && <p class="error">{errors[`option${index}`]}</p>}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="panel stack">
+        <h2>Nom et textes</h2>
         <LocalizedField
-          name={`option${index}Label`}
-          label="Titre"
-          values={{
-            fr: option(index)?.label.fr,
-            ar: option(index)?.label.ar,
-            en: option(index)?.label.en,
-          }}
+          name="name"
+          label="Nom du plat"
+          required
+          values={{ fr: dish.nameFr, ar: dish.nameAr, en: dish.nameEn }}
+          errors={errors}
+          draft={drafts.has('nameEn') || drafts.has('nameAr')}
         />
         <LocalizedField
-          name={`option${index}Choices`}
-          label="Choix (un par ligne)"
+          name="description"
+          label="Description courte"
           multiline
-          values={{
-            fr: option(index)
-              ?.choices.map((c) => c.fr)
-              .join('\n'),
-            ar: option(index)
-              ?.choices.map((c) => c.ar ?? '')
-              .join('\n'),
-            en: option(index)
-              ?.choices.map((c) => c.en ?? '')
-              .join('\n'),
-          }}
+          hint="Une phrase, sans inventer d’ingrédients."
+          values={{ fr: dish.descriptionFr, ar: dish.descriptionAr, en: dish.descriptionEn }}
+          errors={errors}
+          draft={drafts.has('description')}
         />
-      </fieldset>
-    ))}
-  </section>
+        <LocalizedField
+          name="note"
+          label="Note de service (facultatif)"
+          multiline
+          hint="Ex. « Pesé et annoncé à table ». Affichée dans le détail du plat."
+          values={{ fr: dish.noteFr, ar: dish.noteAr, en: dish.noteEn }}
+          errors={errors}
+          draft={drafts.has('note')}
+        />
+        {drafts.size > 0 && (
+          <label class="check">
+            <input type="checkbox" name="draftsReviewed" /> J’ai relu les textes : retirer la
+            mention « brouillon »
+          </label>
+        )}
+      </section>
 
-  <section class="panel stack" data-cropper-root>
-    <h2>Photo</h2>
-    {dish.image ? (
-      <div class="stack">
-        <img
-          class="photo-current"
-          src={dish.image.jpg[2]?.src ?? dish.image.jpg[0]?.src}
-          alt={dish.nameFr ?? ''}
-          width={320}
-          height={240}
+      <section class="panel stack">
+        <h2>Prix et catégorie</h2>
+        <div class="grid-3">
+          <div class="field">
+            <label for="price">Prix en dinars *</label>
+            <input
+              id="price"
+              name="price"
+              type="text"
+              inputmode="decimal"
+              value={price}
+              required
+              aria-describedby="price-preview price-hint"
+              aria-invalid={errors.price ? 'true' : undefined}
+              data-price-input="price-preview"
+            />
+            <p class="hint" id="price-hint">
+              Ex. 42 · 42,500 · 42,000 (= 42 DT)
+            </p>
+            <p class="hint" id="price-preview" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="priceUnit">Le prix s’entend</label>
+            <select id="priceUnit" name="priceUnit">
+              <option value="item" selected={dish.priceUnit !== 'per100g'}>
+                par plat
+              </option>
+              <option value="per100g" selected={dish.priceUnit === 'per100g'}>
+                aux 100 g
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="categoryId">Catégorie *</label>
+            <select
+              id="categoryId"
+              name="categoryId"
+              required
+              aria-invalid={errors.categoryId ? 'true' : undefined}
+            >
+              {categories.map((c) => (
+                <option value={c.id} selected={c.id === dish.categoryId}>
+                  {c.nameFr}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label for="serves">Nombre de personnes</label>
+            <input
+              id="serves"
+              name="serves"
+              type="number"
+              min="1"
+              max="20"
+              value={dish.serves ?? ''}
+            />
+            <p class="hint">Laisser vide pour un plat standard.</p>
+          </div>
+          <div class="field">
+            <label for="kind">Type (pour les filtres)</label>
+            <select id="kind" name="kind">
+              {kinds.map(([value, label]) => (
+                <option value={value} selected={dish.kind === value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel stack">
+        <h2>Composition et options</h2>
+        <LocalizedField
+          name="includes"
+          label="Ce que comprend le plat"
+          multiline
+          hint="Un élément par ligne, dans le même ordre pour chaque langue."
+          values={{
+            fr: dish.includes?.fr.join('\n'),
+            ar: dish.includes?.ar?.join('\n'),
+            en: dish.includes?.en?.join('\n'),
+          }}
+          errors={errors}
+          draft={drafts.has('includes')}
         />
-        {dish.imageSource === 'temporary' && (
-          <p>
-            <span class="tag">photo temporaire</span> {dish.imageCredit}
+        {[0, 1].map((index) => (
+          <fieldset class="field">
+            <legend>Option {index + 1} (ex. « Préparation : sautés / panés »)</legend>
+            {errors[`option${index}`] && <p class="error">{errors[`option${index}`]}</p>}
+            <LocalizedField
+              name={`option${index}Label`}
+              label="Titre"
+              values={{
+                fr: option(index)?.label.fr,
+                ar: option(index)?.label.ar,
+                en: option(index)?.label.en,
+              }}
+            />
+            <LocalizedField
+              name={`option${index}Choices`}
+              label="Choix (un par ligne)"
+              multiline
+              values={{
+                fr: option(index)
+                  ?.choices.map((c) => c.fr)
+                  .join('\n'),
+                ar: option(index)
+                  ?.choices.map((c) => c.ar ?? '')
+                  .join('\n'),
+                en: option(index)
+                  ?.choices.map((c) => c.en ?? '')
+                  .join('\n'),
+              }}
+            />
+          </fieldset>
+        ))}
+      </section>
+    </div>
+
+    <div class="form-side">
+      <section class="panel stack" data-cropper-root>
+        <h2>Photo</h2>
+        {errors.photo && (
+          <p class="error" role="alert">
+            {errors.photo}
           </p>
         )}
-        <label class="check">
-          <input type="checkbox" name="removePhoto" /> Retirer la photo
+        {dish.image ? (
+          <div class="stack" data-current-photo>
+            <img
+              class="photo-current"
+              src={dish.image.jpg[2]?.src ?? dish.image.jpg[0]?.src}
+              alt={dish.nameFr ?? ''}
+              width={320}
+              height={240}
+            />
+            {dish.imageSource === 'temporary' && (
+              <p class="hint">
+                <span class="tag">photo temporaire</span> {dish.imageCredit}
+              </p>
+            )}
+            <label class="check">
+              <input type="checkbox" name="removePhoto" /> Retirer la photo
+            </label>
+          </div>
+        ) : (
+          <p class="muted">Pas de photo : le menu affiche la voile.</p>
+        )}
+        <div class="field">
+          <label for="photo" class="dropzone" data-dropzone>
+            <span class="dropzone-icon">
+              <Icon name="upload" />
+            </span>
+            <strong>{dish.image ? 'Remplacer la photo' : 'Ajouter une photo'}</strong>
+            <span>
+              Glissez une image ici ou <u>parcourez</u>
+            </span>
+          </label>
+          <input
+            id="photo"
+            name="photo"
+            type="file"
+            class="file-input"
+            accept="image/jpeg,image/png,image/webp"
+            aria-describedby="photo-hint"
+          />
+          <p class="hint" id="photo-hint">
+            JPEG, PNG ou WebP. Les grandes photos de téléphone sont réduites automatiquement.
+            Glissez l’image dans le cadre pour choisir le cadrage 4:3.
+          </p>
+        </div>
+        <p class="photo-busy" data-photo-busy hidden>
+          Préparation de la photo…
+        </p>
+        <div class="cropper" data-cropper hidden></div>
+        <label class="field" data-zoom-label hidden>
+          <span class="label">Zoom</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value="1"
+            data-zoom
+            aria-label="Zoom du cadrage"
+          />
         </label>
-      </div>
-    ) : (
-      <p class="muted">Pas de photo : le menu affiche la voile.</p>
-    )}
-    <div class="field">
-      <label for="photo">{dish.image ? 'Remplacer la photo' : 'Ajouter une photo'}</label>
-      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
-      <p class="hint">
-        JPEG, PNG ou WebP, 10 Mo maximum (les photos d’iPhone sont converties automatiquement).
-        Glissez l’image pour choisir le cadrage 4:3.
-      </p>
+        <button type="button" class="button button--ghost button--small" data-photo-reset hidden>
+          Annuler cette photo
+        </button>
+        <input type="hidden" name="cropLeft" />
+        <input type="hidden" name="cropTop" />
+        <input type="hidden" name="cropWidth" />
+        <input type="hidden" name="cropHeight" />
+      </section>
+
+      <section class="panel">
+        <h2>Publication</h2>
+        <label class="switch">
+          <span class="switch-text">
+            Disponible
+            <small>Décochez pendant le service si le plat est épuisé.</small>
+          </span>
+          <input type="checkbox" name="isAvailable" checked={dish.isAvailable ?? true} />
+        </label>
+        <label class="switch">
+          <span class="switch-text">
+            Visible sur le menu
+            <small>Un plat masqué n’apparaît pas aux clients.</small>
+          </span>
+          <input type="checkbox" name="isVisible" checked={dish.isVisible ?? true} />
+        </label>
+      </section>
+
+      <section class="panel">
+        <fieldset class="field">
+          <legend>Étiquettes</legend>
+          <div class="actions-row">
+            {TAGS.map((tag) => (
+              <label class="pill-check">
+                <input type="checkbox" name="tags" value={tag} checked={dish.tags?.includes(tag)} />
+                {tagLabels[tag]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </section>
     </div>
-    <div class="cropper" data-cropper hidden></div>
-    <label class="field" data-zoom-label>
-      <span class="label">Zoom</span>
-      <input
-        type="range"
-        min="1"
-        max="3"
-        step="0.01"
-        value="1"
-        data-zoom
-        hidden
-        aria-label="Zoom du cadrage"
-      />
-    </label>
-    <input type="hidden" name="cropLeft" />
-    <input type="hidden" name="cropTop" />
-    <input type="hidden" name="cropWidth" />
-    <input type="hidden" name="cropHeight" />
-  </section>
+  </div>
 
   <div class="form-bar">
     <button type="submit" name="action" value="save" class="button">
+      <Icon name="check" size={18} />
       {submitLabel}
     </button>
     <a href="/admin/plats" class="button button--ghost">
       Annuler
     </a>
+    <span class="spacer"></span>
     <slot name="actions" />
   </div>
 </form>

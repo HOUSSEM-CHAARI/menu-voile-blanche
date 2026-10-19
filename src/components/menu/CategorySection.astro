@@ -63,19 +63,27 @@ const { slug, title, image, layout, dishes, locale, first } = Astro.props
     margin-block-end: var(--space-5);
   }
   h2 {
+    margin-block-end: var(--space-1);
     font-family: var(--font-serif);
     font-weight: var(--w-title);
     font-size: var(--text-title);
     line-height: var(--leading-tight);
   }
   .category :global(.category-cover) {
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     overflow: hidden;
   }
   .category :global(.category-cover img) {
     aspect-ratio: 16 / 9;
   }
-  .dishes > :global(:last-child) {
-    border-block-end: 0;
+  .dishes {
+    display: grid;
+    gap: var(--space-3);
+  }
+  @media (min-width: 48rem) {
+    /* Simple lists (drinks) read faster in two columns on wide screens. */
+    .category--compact .dishes {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 </style>

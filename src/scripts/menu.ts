@@ -217,6 +217,8 @@ sheet?.addEventListener('click', (event) => {
   if (event.target === sheet) closeSheet()
 })
 document.querySelector('[data-sheet-close]')?.addEventListener('click', () => closeSheet())
+// The order (src/scripts/cart.ts) closes the sheet once the dish is added.
+document.addEventListener('vb:close-sheet', () => closeSheet())
 
 document.querySelector('[data-sheet-share]')?.addEventListener('click', async () => {
   const url = `${location.origin}${location.pathname}#${openSlug}`

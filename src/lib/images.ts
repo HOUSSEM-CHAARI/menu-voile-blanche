@@ -5,6 +5,7 @@
  */
 import { createHash } from 'node:crypto'
 import sharp from 'sharp'
+import { clampCrop, type CropArea } from './crop'
 import { putFile, removeFiles } from './storage'
 import type { ImageMeta, ImageVariant } from './types'
 
@@ -20,11 +21,13 @@ const ACCEPTED_FORMATS = new Set(['jpeg', 'png', 'webp', 'heif', 'avif'])
 
 export class ImageError extends Error {}
 
-export interface CropArea {
-  left: number
-  top: number
-  width: number
-  height: number
+export type { CropArea }
+
+/** Message for the owner; unexpected failures are logged so they can be diagnosed. */
+export function photoErrorMessage(error: unknown): string {
+  if (error instanceof ImageError) return error.message
+  console.error('[photo]', error)
+  return 'La photo n’a pas pu être traitée. Choisissez-la à nouveau ou essayez une autre photo (JPEG ou PNG).'
 }
 
 export async function processImage(
@@ -49,15 +52,9 @@ export async function processImage(
   const maxWidth = spec.widths.at(-1) ?? 1280
 
   let pipeline = sharp(oriented.data)
-  if (crop) {
-    pipeline = pipeline.extract({
-      left: Math.max(0, Math.round(crop.left)),
-      top: Math.max(0, Math.round(crop.top)),
-      width: Math.min(source.width, Math.round(crop.width)),
-      height: Math.min(source.height, Math.round(crop.height)),
-    })
-  }
-  const targetWidth = Math.min(maxWidth, crop ? Math.round(crop.width) : source.width)
+  const area = crop ? clampCrop(crop, source.width, source.height) : undefined
+  if (area) pipeline = pipeline.extract(area)
+  const targetWidth = Math.min(maxWidth, area ? area.width : source.width)
   const master = await pipeline
     .resize({
       width: targetWidth,

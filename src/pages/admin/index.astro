@@ -1,44 +1,191 @@
 ---
 import HistoryList from '../../components/admin/HistoryList.astro'
+import Icon, { type IconName } from '../../components/Icon.astro'
 import AdminLayout from '../../layouts/AdminLayout.astro'
 import { dashboardStats } from '../../lib/admin/data'
 
 const stats = await dashboardStats()
-const cards = [
-  { label: 'Catégories', value: stats.categoriesCount, href: '/admin/categories' },
-  { label: 'Plats', value: stats.dishes, href: '/admin/plats' },
-  { label: 'Épuisés', value: stats.soldOut, href: '/admin/plats?statut=soldout' },
-  { label: 'À vérifier', value: stats.review, href: '/admin/plats?statut=review' },
-  { label: 'Sans arabe', value: stats.missingAr, href: '/admin/plats' },
-  { label: 'Sans anglais', value: stats.missingEn, href: '/admin/plats' },
-  { label: 'Sans photo', value: stats.noPhoto, href: '/admin/plats?statut=nophoto' },
-  { label: 'Photos temporaires', value: stats.temporary, href: '/admin/plats' },
-  { label: 'Corbeille', value: stats.trash, href: '/admin/corbeille' },
+const live = stats.dishes - stats.hidden
+const cards: { label: string; value: number; href: string; icon: IconName; tone: string }[] = [
+  { label: 'Plats en ligne', value: live, href: '/admin/plats', icon: 'waiter', tone: 'success' },
+  {
+    label: 'Épuisés',
+    value: stats.soldOut,
+    href: '/admin/plats?statut=soldout',
+    icon: 'alert',
+    tone: stats.soldOut > 0 ? 'danger' : 'primary',
+  },
+  {
+    label: 'À vérifier',
+    value: stats.review,
+    href: '/admin/plats?statut=review',
+    icon: 'note',
+    tone: stats.review > 0 ? 'warn' : 'primary',
+  },
+  {
+    label: 'Catégories',
+    value: stats.categoriesCount,
+    href: '/admin/categories',
+    icon: 'folder',
+    tone: 'violet',
+  },
 ]
+
+const percent = (part: number) => (stats.dishes ? Math.round((part / stats.dishes) * 100) : 100)
+const withPhoto = stats.dishes - stats.noPhoto
+const meters = [
+  {
+    label: 'Plats avec photo',
+    done: withPhoto,
+    href: '/admin/plats?statut=nophoto',
+  },
+  {
+    label: 'Vraies photos du restaurant',
+    done: withPhoto - stats.temporary,
+    href: '/admin/plats',
+  },
+  { label: 'Traduits en arabe', done: stats.dishes - stats.missingAr, href: '/admin/plats' },
+  { label: 'Traduits en anglais', done: stats.dishes - stats.missingEn, href: '/admin/plats' },
+]
+const today = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+}).format(new Date())
 ---
 
 <AdminLayout title="Tableau de bord" section="dashboard">
   <div class="page-head">
-    <h1>Bonjour {Astro.locals.user?.username}</h1>
-    <a class="button" href="/admin/plats/nouveau">
-      Ajouter un plat
-    </a>
+    <div>
+      <p class="eyebrow">{today.charAt(0).toUpperCase() + today.slice(1)}</p>
+      <h1>Bonjour {Astro.locals.user?.username}</h1>
+    </div>
+    <div class="actions-row">
+      <a class="button button--ghost" href="/fr" target="_blank" rel="noopener">
+        <Icon name="eye" size={18} /> Voir le menu
+      </a>
+      <a class="button" href="/admin/plats/nouveau">
+        <Icon name="plus" size={18} /> Ajouter un plat
+      </a>
+    </div>
   </div>
+
   <ul class="stats" role="list">
     {cards.map((card) => (
       <li>
-        <a class="stat" href={card.href}>
+        <a class:list={['stat', `stat--${card.tone}`]} href={card.href}>
+          <span class="stat-icon">
+            <Icon name={card.icon} />
+          </span>
           <strong>{card.value}</strong>
           <span>{card.label}</span>
         </a>
       </li>
     ))}
   </ul>
-  <section class="panel">
-    <h2>Dernières modifications</h2>
-    <HistoryList entries={stats.recent} />
-    <p>
-      <a href="/admin/historique">Tout l’historique</a>
-    </p>
-  </section>
+
+  <div class="dash-grid">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Dernières modifications</h2>
+        <a href="/admin/historique">Tout l’historique →</a>
+      </div>
+      <HistoryList entries={stats.recent} />
+    </section>
+
+    <div class="dash-col">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Qualité du menu</h2>
+          <span class="tag">{stats.dishes} plats</span>
+        </div>
+        <ul class="meters" role="list">
+          {meters.map((meter) => {
+            const value = percent(meter.done)
+            return (
+              <li>
+                <div class="meter-head">
+                  <a href={meter.href}>{meter.label}</a>
+                  <span class="meter-value">
+                    {meter.done}/{stats.dishes}
+                  </span>
+                </div>
+                <div
+                  class:list={['meter', { 'meter--done': value === 100 }]}
+                  role="meter"
+                  aria-label={meter.label}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={value}
+                >
+                  <span style={`width: ${value}%`} />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Raccourcis</h2>
+        <ul class="shortcuts" role="list">
+          <li>
+            <a class="shortcut" href="/admin/plats?statut=soldout">
+              <span class="stat-icon stat--danger">
+                <Icon name="alert" size={18} />
+              </span>
+              <span>
+                <strong>Service en cours</strong>
+                <small>Marquer un plat épuisé</small>
+              </span>
+            </a>
+          </li>
+          <li>
+            <a class="shortcut" href="/admin/reglages">
+              <span class="stat-icon">
+                <Icon name="qr" size={18} />
+              </span>
+              <span>
+                <strong>QR code et carte de table</strong>
+                <small>À imprimer pour les tables</small>
+              </span>
+            </a>
+          </li>
+          <li>
+            <a class="shortcut" href="/admin/sauvegarde">
+              <span class="stat-icon">
+                <Icon name="download" size={18} />
+              </span>
+              <span>
+                <strong>Sauvegarde</strong>
+                <small>Télécharger le menu (.json)</small>
+              </span>
+            </a>
+          </li>
+          {stats.trash > 0 && (
+            <li>
+              <a class="shortcut" href="/admin/corbeille">
+                <span class="stat-icon">
+                  <Icon name="trash" size={18} />
+                </span>
+                <span>
+                  <strong>Corbeille</strong>
+                  <small>
+                    {stats.trash} plat{stats.trash > 1 ? 's' : ''} à restaurer ou supprimer
+                  </small>
+                </span>
+              </a>
+            </li>
+          )}
+        </ul>
+      </section>
+    </div>
+  </div>
 </AdminLayout>
+
+<style>
+  .shortcut .stat--danger {
+    background: var(--a-danger-soft);
+    color: var(--a-danger);
+  }
+</style>

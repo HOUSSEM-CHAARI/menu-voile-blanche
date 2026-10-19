@@ -61,6 +61,7 @@ export async function dashboardStats() {
     noPhoto,
     temporary,
     trash,
+    hidden,
   ] = await Promise.all([
     db
       .select({ n: count() })
@@ -75,6 +76,7 @@ export async function dashboardStats() {
     one(and(live, isNull(menuItems.image))),
     one(and(live, eq(menuItems.imageSource, 'temporary'))),
     one(and(isNotNull(menuItems.deletedAt))),
+    one(and(live, eq(menuItems.isVisible, false))),
   ])
   const recent = await db.select().from(auditLog).orderBy(desc(auditLog.id)).limit(8)
   return {
@@ -87,6 +89,7 @@ export async function dashboardStats() {
     noPhoto,
     temporary,
     trash,
+    hidden,
     recent,
   }
 }

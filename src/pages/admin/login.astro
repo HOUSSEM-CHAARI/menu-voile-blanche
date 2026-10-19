@@ -41,9 +41,11 @@ if (Astro.request.method === 'POST') {
 <AdminLayout title="Connexion">
   <div class="login">
     <form method="post" class="panel stack">
-      <svg width="36" height="45" aria-hidden="true">
-        <use href="#vb-sail"></use>
-      </svg>
+      <span class="brand-mark" style="width: 3rem; height: 3rem">
+        <svg width="24" height="30" aria-hidden="true">
+          <use href="#vb-sail"></use>
+        </svg>
+      </span>
       <h1>Back office</h1>
       <p class="muted">La Voile Blanche — gestion du menu.</p>
       {error && (

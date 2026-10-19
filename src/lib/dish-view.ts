@@ -6,7 +6,9 @@ import type { ImageMeta, ImageSource, Kind, Locale } from './types'
 
 export interface OptionView {
   label: LocalizedText
-  choices: LocalizedText[]
+  /** French label and choices, shown to the waiter whatever the guest's language. */
+  labelFr: string
+  choices: (LocalizedText & { fr: string })[]
 }
 
 export type BadgeKind = 'signature' | 'serves' | 'per100g'
@@ -15,6 +17,8 @@ export interface DishView {
   id: number
   slug: string
   name: LocalizedText
+  /** French name: the order screen always shows it for the waiter. */
+  nameFr: string
   description: LocalizedText | null
   note: LocalizedText | null
   price: PriceParts
@@ -71,6 +75,7 @@ export function dishView(item: MenuItem, locale: Locale): DishView {
     id: item.id,
     slug: item.slug,
     name,
+    nameFr: item.nameFr,
     description: optional(description),
     note: optional(note),
     price: priceParts(item.price, locale, item.priceUnit),
@@ -78,7 +83,8 @@ export function dishView(item: MenuItem, locale: Locale): DishView {
     badges,
     options: item.options.map((option) => ({
       label: pick(locale, option.label),
-      choices: option.choices.map((choice) => pick(locale, choice)),
+      labelFr: option.label.fr,
+      choices: option.choices.map((choice) => ({ ...pick(locale, choice), fr: choice.fr })),
     })),
     includes: pickList(locale, item.includes),
     kind: item.kind,

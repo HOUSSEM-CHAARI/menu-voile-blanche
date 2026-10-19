@@ -93,6 +93,36 @@ test.describe('menu experience', () => {
     await expect(page.locator('[data-dish]:visible')).toHaveCount(4)
   })
 
+  test('dishes go into the order and the waiter reads them in French', async ({ page }) => {
+    await page.goto('/en?table=4')
+    await page.locator('#brik-au-thon [data-add]').click()
+    await page.locator('#brik-au-thon [data-add]').click()
+    await expect(page.locator('#brik-au-thon [data-add-qty]')).toHaveText('2')
+
+    // A dish with a choice opens its sheet first.
+    await page.locator('#oeufs-de-seiche-sautes-ou-panes .add').click()
+    const sheet = page.locator('dialog[data-sheet]')
+    await sheet.locator('.choice').nth(1).click()
+    await sheet.locator('[data-sheet-add]').click()
+    await expect(sheet).toBeHidden()
+    await expect(page.locator('[data-cart-count]')).toHaveText('3')
+
+    await page.locator('[data-cart-open]').click()
+    await expect(page.locator('dialog[data-cart]')).toContainText('3 items')
+    await page.locator('[data-waiter-open]').click()
+    const waiter = page.locator('dialog[data-waiter]')
+    await expect(waiter).toContainText('Table 4')
+    await expect(waiter).toContainText('Brik au thon')
+    await expect(waiter).toContainText('Préparation : Panés')
+
+    // Back closes the order screen and stays on the menu; the order survives a reload.
+    await page.goBack()
+    await expect(waiter).toBeHidden()
+    await expect(page).toHaveURL(/\/en\?table=4$/)
+    await page.reload()
+    await expect(page.locator('[data-cart-count]')).toHaveText('3')
+  })
+
   test('the "for 2" filter keeps only dishes for two', async ({ page, isMobile }) => {
     await page.goto('/fr')
     if (isMobile) await page.locator('[data-search-open]').click()

@@ -1,7 +1,7 @@
 /** Shared save logic for the "new dish" and "edit dish" pages. */
 import type { SessionUser } from '../auth'
 import type { MenuItem, NewMenuItem } from '../db/schema'
-import { ImageError, processImage } from '../images'
+import { photoErrorMessage, processImage } from '../images'
 import { createDish, setDishImage, updateDish } from './data'
 import { parseDishForm, type FieldErrors } from './forms'
 import { readCrop, readUpload } from './http'
@@ -52,14 +52,14 @@ export async function saveDish(
   try {
     upload = await readUpload(form, 'photo')
   } catch (error) {
-    errors.photo = error instanceof ImageError ? error.message : 'Photo illisible.'
+    errors.photo = photoErrorMessage(error)
   }
   let image = null
   if (upload && Object.keys(errors).length === 0) {
     try {
       image = await processImage(upload, 'dish', readCrop(form))
     } catch (error) {
-      errors.photo = error instanceof ImageError ? error.message : 'Photo illisible.'
+      errors.photo = photoErrorMessage(error)
     }
   }
   if (!parsed.data || Object.keys(errors).length > 0) {

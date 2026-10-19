@@ -1,8 +1,12 @@
 ---
-/** Full dish detail, rendered into a <template> and shown in the bottom sheet on demand. */
+/**
+ * Full dish detail, rendered into a <template> and shown in the bottom sheet on demand.
+ * Choices (e.g. "sautés / panés") are picked here before the dish goes into the order.
+ */
 import Badges from './Badges.astro'
 import DishImage from './DishImage.astro'
 import PriceTag from './PriceTag.astro'
+import Icon from '../Icon.astro'
 import type { DishView } from '../../lib/dish-view'
 import { ui } from '../../lib/i18n'
 import type { Locale } from '../../lib/types'
@@ -25,7 +29,7 @@ const t = ui(locale)
     placeholderName={dish.name}
     illustrationLabel={dish.imageSource === 'temporary' ? t.photoIllustration : null}
   />
-  <div class="detail">
+  <div class="detail" data-detail={dish.slug}>
     <div class="detail-head">
       <h2 id="sheet-title" tabindex="-1" lang={dish.name.lang}>
         {dish.name.text}
@@ -38,15 +42,25 @@ const t = ui(locale)
         {dish.description.text}
       </p>
     )}
-    {dish.options.map((option) => (
-      <div class="detail-block">
-        <h3 lang={option.label.lang}>{option.label.text}</h3>
-        <ul role="list" class="choices">
-          {option.choices.map((choice) => (
-            <li lang={choice.lang}>{choice.text}</li>
+    {dish.options.map((option, index) => (
+      <fieldset class="detail-block" data-option data-label-fr={option.labelFr}>
+        <legend lang={option.label.lang}>{option.label.text}</legend>
+        <div class="choices">
+          {option.choices.map((choice, position) => (
+            <label class="choice">
+              <input
+                type="radio"
+                name={`option-${index}`}
+                value={choice.text}
+                data-fr={choice.fr}
+                checked={position === 0}
+                disabled={dish.soldOut}
+              />
+              <span lang={choice.lang}>{choice.text}</span>
+            </label>
           ))}
-        </ul>
-      </div>
+        </div>
+      </fieldset>
     ))}
     {dish.includes.items.length > 0 && (
       <div class="detail-block">
@@ -64,6 +78,26 @@ const t = ui(locale)
       </p>
     )}
   </div>
+  {!dish.soldOut && (
+    <div class="detail-add" data-detail-add={dish.slug}>
+      <div class="stepper" role="group" aria-label={t.quantity}>
+        <button type="button" data-step="-1" aria-label={t.decrease}>
+          <Icon name="minus" size={18} />
+        </button>
+        <output data-step-value aria-live="polite">
+          1
+        </output>
+        <button type="button" data-step="1" aria-label={t.increase}>
+          <Icon name="plus" size={18} />
+        </button>
+      </div>
+      <button type="button" class="add-wide" data-sheet-add={dish.slug}>
+        <Icon name="bag" size={20} />
+        <span>{t.add}</span>
+        <span class="add-wide-price" data-add-total></span>
+      </button>
+    </div>
+  )}
 </template>
 
 <style>
@@ -100,8 +134,15 @@ const t = ui(locale)
   .detail-block {
     display: grid;
     gap: var(--space-2);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
-  h3 {
+  h3,
+  legend {
+    padding: 0;
+    margin-block-end: var(--space-2);
     font-family: var(--font-sans);
     font-size: 0.9375rem;
     font-weight: 600;
@@ -111,13 +152,39 @@ const t = ui(locale)
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    margin: 0;
   }
-  .choices li {
-    padding: 0.25rem 0.75rem;
+  .choice {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 var(--space-4);
     border: 1px solid var(--line);
     border-radius: 999px;
     background: var(--foam);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+  .choice input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .choice:has(input:checked) {
+    border-color: var(--abyss);
+    background: var(--abyss);
+    color: var(--foam);
+  }
+  .choice:has(input:focus-visible) {
+    outline: 2px solid var(--shutter);
+    outline-offset: 2px;
+  }
+  .choice:has(input:disabled) {
+    cursor: default;
   }
   .includes {
     display: grid;
@@ -131,6 +198,77 @@ const t = ui(locale)
   .detail-note {
     padding: var(--space-3) var(--space-4);
     border-inline-start: 2px solid var(--sand);
+    border-radius: 0 12px 12px 0;
     background: var(--foam);
+  }
+  :global([dir='rtl']) .detail-note {
+    border-radius: 12px 0 0 12px;
+  }
+
+  /* Add bar: stays at the bottom of the sheet while the details scroll. */
+  .detail-add {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 1;
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line);
+    background: rgb(246 248 249 / 0.92);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--foam);
+  }
+  .stepper button {
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--abyss);
+    cursor: pointer;
+  }
+  .stepper button:disabled {
+    color: var(--line);
+    cursor: default;
+  }
+  .stepper output {
+    min-width: 1.75rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .add-wide {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 48px;
+    padding-inline: var(--space-4);
+    border: 0;
+    border-radius: 999px;
+    background: var(--abyss);
+    color: var(--foam);
+    font-weight: 600;
+    box-shadow: 0 10px 24px -12px rgb(13 36 54 / 0.7);
+    cursor: pointer;
+  }
+  .add-wide:hover {
+    background: var(--shutter);
+  }
+  .add-wide-price:not(:empty)::before {
+    content: '·';
+    margin-inline-end: var(--space-2);
+    opacity: 0.6;
   }
 </style>

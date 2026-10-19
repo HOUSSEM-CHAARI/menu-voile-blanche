@@ -86,8 +86,9 @@ const t = ui(locale)
     scroll-snap-align: start;
   }
   .signature :global(.signature-photo) {
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     overflow: hidden;
+    box-shadow: var(--shadow-card);
   }
   .signature-body {
     display: grid;
@@ -115,7 +116,7 @@ const t = ui(locale)
   .signature:has(a:focus-visible) {
     outline: 2px solid var(--shutter);
     outline-offset: 4px;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
   }
   .is-soldout :global(.signature-photo) {
     filter: grayscale(1);

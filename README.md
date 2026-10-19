@@ -3,8 +3,11 @@
 Menu à consulter sur téléphone (QR code sur les tables) en **français, arabe et anglais**, et un
 **back office** pour modifier les plats, les prix et les photos sans toucher au code.
 
-Le menu sert uniquement à **consulter** la carte : il n’y a ni commande ni paiement en ligne.
-Le client scanne le QR code, lit le menu, puis passe sa commande au serveur.
+Il n’y a ni commande ni paiement en ligne. Le client scanne le QR code, lit le menu et peut
+préparer sa commande dans un **panier** sur son téléphone ; quand le serveur arrive, il touche
+**Montrer au serveur** : la commande s’affiche en grand, avec le nom de chaque plat **en français**
+(quelle que soit la langue du client), les choix (ex. « Préparation : Panés »), la remarque et le
+total estimé. Rien n’est envoyé : le panier reste sur le téléphone du client.
 
 > Première partie : guide pour le restaurant (en français).
 > Deuxième partie : *technical notes for developers* (in English).
@@ -62,8 +65,10 @@ vous le rappelle). Pour un plat vendu au poids, choisissez « aux 100 g ».
 
 ### 6. Ajouter une photo
 
-Dans la fiche du plat → **Photo** → choisissez l’image. Faites glisser l’image dans le cadre pour
-choisir le cadrage, le curseur **Zoom** permet d’agrandir. **Enregistrer**.
+Dans la fiche du plat → **Photo** → choisissez l’image (ou glissez-la dans le cadre pointillé).
+Faites glisser l’image dans le cadre pour choisir le cadrage, le curseur **Zoom** permet
+d’agrandir. **Enregistrer** (le bouton tourne pendant le traitement, quelques secondes).
+Les grandes photos de téléphone sont réduites automatiquement avant l’envoi.
 Les tailles et formats pour téléphone sont créés automatiquement ; l’ancienne photo est supprimée.
 Conseils de prise de vue : voir [PHOTO-SHOT-LIST.md](PHOTO-SHOT-LIST.md).
 
@@ -92,6 +97,8 @@ Depuis la même page : téléchargez le **QR code** (SVG pour l’imprimeur, PNG
 **carte de table A6** (Fichier → Imprimer → format A6, sans marges, ou « Enregistrer en PDF »).
 ⚠ Tant que l’adresse du menu est `localhost`, le QR code ne fonctionne que sur cet ordinateur :
 renseignez la vraie adresse avant d’imprimer.
+Astuce : une adresse terminée par `?table=12` (ex. `https://…/fr?table=12`) remplit
+automatiquement le n° de table dans le panier du client.
 
 ### 10. Sauvegarder les données
 

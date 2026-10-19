@@ -1,7 +1,8 @@
 /**
  * Back-office enhancements. Every form also works without JavaScript; this script adds:
  * toasts, the unsaved-changes warning, the live price preview, confirmations, one-tap
- * availability, drag-and-drop ordering and the photo crop frame.
+ * availability, drag-and-drop ordering, the saving spinner and the photo drop zone,
+ * resizing and crop frame.
  */
 import { formatPrice, isImplausiblePrice, parsePriceInput } from '../lib/price'
 
@@ -161,20 +162,102 @@ for (const list of document.querySelectorAll<HTMLElement>('[data-sortable]')) {
   })
 }
 
-/* ─── Photo crop frame (4:3 for dishes, 16:9 for covers) ──────────────────── */
+/* ─── Saving state and error summary ──────────────────────────────────────── */
+
+// Runs after the confirmations above: a submit that was not cancelled shows a spinner on the
+// button that sent it, and a second click cannot send the form twice (photos take a moment).
+document.addEventListener('submit', (event) => {
+  if (event.defaultPrevented) return
+  const form = event.target as HTMLFormElement
+  if (form.dataset.submitting) {
+    event.preventDefault()
+    return
+  }
+  form.dataset.submitting = '1'
+  const submitter = (event as SubmitEvent).submitter
+  if (submitter?.classList.contains('button')) {
+    submitter.classList.add('is-loading')
+    submitter.setAttribute('aria-busy', 'true')
+  }
+})
+
+// Coming back with the browser's back button: the page may be restored mid-"saving".
+window.addEventListener('pageshow', (event) => {
+  if (!event.persisted) return
+  for (const form of document.querySelectorAll<HTMLFormElement>('form[data-submitting]')) {
+    delete form.dataset.submitting
+  }
+  for (const button of document.querySelectorAll('.is-loading')) {
+    button.classList.remove('is-loading')
+    button.removeAttribute('aria-busy')
+  }
+})
+
+// After a refused save, bring the list of problems into view.
+document.querySelector<HTMLElement>('[data-form-errors]')?.focus()
+
+/* ─── Photo: drop zone, automatic resizing, crop frame (4:3 dishes, 16:9 covers) ─ */
+
+/** Phone photos are reduced in the browser: faster upload, never over the 10 MB limit. */
+const MAX_SIDE = 2560
+const KEEP_AS_IS_BYTES = 6 * 1024 * 1024
+
+async function preparePhoto(chosen: File): Promise<File> {
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(chosen, { imageOrientation: 'from-image' })
+  } catch {
+    throw new Error('Format non pris en charge : utilisez une photo JPEG, PNG ou WebP.')
+  }
+  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+  const usable = /^image\/(jpeg|png|webp)$/.test(chosen.type)
+  if (scale === 1 && usable && chosen.size <= KEEP_AS_IS_BYTES) {
+    bitmap.close()
+    return chosen
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('La photo n’a pas pu être préparée.')
+  context.fillStyle = '#fff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', 0.9),
+  )
+  if (!blob) throw new Error('La photo n’a pas pu être préparée.')
+  return new File([blob], `${chosen.name.replace(/\.[^.]+$/, '') || 'photo'}.jpg`, {
+    type: 'image/jpeg',
+  })
+}
 
 for (const root of document.querySelectorAll<HTMLElement>('[data-cropper-root]')) {
   const file = root.querySelector<HTMLInputElement>('input[type="file"]')
   const frame = root.querySelector<HTMLElement>('[data-cropper]')
   const zoom = root.querySelector<HTMLInputElement>('[data-zoom]')
+  if (!file || !frame || !zoom) continue
+  const zoomWrap = root.querySelector<HTMLElement>('[data-zoom-label]') ?? zoom
+  const busy = root.querySelector<HTMLElement>('[data-photo-busy]')
+  const reset = root.querySelector<HTMLButtonElement>('[data-photo-reset]')
+  const dropzone = root.querySelector<HTMLElement>('[data-dropzone]')
   const fields = ['cropLeft', 'cropTop', 'cropWidth', 'cropHeight'].map((name) =>
     root.querySelector<HTMLInputElement>(`input[name="${name}"]`),
   )
-  if (!file || !frame || !zoom) continue
   const image = new Image()
+  image.alt = ''
   let x = 0
   let y = 0
   let base = 1
+  let objectUrl = ''
+
+  const showEditor = (visible: boolean) => {
+    frame.hidden = !visible
+    zoomWrap.hidden = !visible
+    zoom.hidden = !visible
+    if (reset) reset.hidden = !visible
+  }
 
   const clampAndWrite = () => {
     const scale = base * Number(zoom.value)
@@ -188,35 +271,74 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-cropper-root]')
     image.style.height = `${shownHeight}px`
     image.style.left = `${x}px`
     image.style.top = `${y}px`
-    const values = [-x / scale, -y / scale, width / scale, height / scale]
+    // Whole pixels that always stay inside the photo (the server clamps again).
+    const left = Math.max(0, Math.floor(-x / scale))
+    const top = Math.max(0, Math.floor(-y / scale))
+    const values = [
+      left,
+      top,
+      Math.min(Math.floor(width / scale), image.naturalWidth - left),
+      Math.min(Math.floor(height / scale), image.naturalHeight - top),
+    ]
     fields.forEach((field, index) => {
-      if (field) field.value = String(Math.round(values[index] ?? 0))
+      if (field) field.value = String(values[index] ?? 0)
     })
   }
 
-  file.addEventListener('change', () => {
+  const clear = () => {
+    file.value = ''
+    showEditor(false)
+    fields.forEach((field) => {
+      if (field) field.value = ''
+    })
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    objectUrl = ''
+  }
+
+  file.addEventListener('change', async () => {
     const chosen = file.files?.[0]
-    if (!chosen) return
-    if (chosen.size > 10 * 1024 * 1024) {
-      toast('La photo dépasse 10 Mo.', 'error')
-      file.value = ''
+    if (!chosen) return clear()
+    if (busy) busy.hidden = false
+    showEditor(false)
+    let prepared: File
+    try {
+      prepared = await preparePhoto(chosen)
+    } catch (error) {
+      if (busy) busy.hidden = true
+      clear()
+      toast(error instanceof Error ? error.message : 'Photo illisible.', 'error')
       return
     }
+    if (prepared !== chosen) {
+      const transfer = new DataTransfer()
+      transfer.items.add(prepared)
+      file.files = transfer.files
+    }
     image.onload = () => {
-      frame.hidden = false
-      zoom.hidden = false
+      if (busy) busy.hidden = true
+      showEditor(true)
       frame.replaceChildren(image)
       base = Math.max(
         frame.clientWidth / image.naturalWidth,
         frame.clientHeight / image.naturalHeight,
       )
       zoom.value = '1'
+      zoom.dataset.previous = '1'
       x = (frame.clientWidth - image.naturalWidth * base) / 2
       y = (frame.clientHeight - image.naturalHeight * base) / 2
       clampAndWrite()
     }
-    image.src = URL.createObjectURL(chosen)
+    image.onerror = () => {
+      if (busy) busy.hidden = true
+      clear()
+      toast('Photo illisible : essayez une autre image.', 'error')
+    }
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    objectUrl = URL.createObjectURL(prepared)
+    image.src = objectUrl
   })
+
+  reset?.addEventListener('click', clear)
 
   zoom.addEventListener('input', () => {
     const before = base * Number(zoom.dataset.previous ?? 1)
@@ -242,4 +364,21 @@ for (const root of document.querySelectorAll<HTMLElement>('[data-cropper-root]')
     clampAndWrite()
   })
   frame.addEventListener('pointerup', () => (start = null))
+  frame.addEventListener('pointercancel', () => (start = null))
+
+  if (dropzone) {
+    dropzone.addEventListener('dragover', (event) => {
+      event.preventDefault()
+      dropzone.classList.add('is-over')
+    })
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-over'))
+    dropzone.addEventListener('drop', (event) => {
+      event.preventDefault()
+      dropzone.classList.remove('is-over')
+      const dropped = event.dataTransfer?.files
+      if (!dropped?.length) return
+      file.files = dropped
+      file.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+  }
 }

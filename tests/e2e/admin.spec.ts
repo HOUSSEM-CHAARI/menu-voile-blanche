@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import sharp from 'sharp'
 
 // Credentials of the test database (see playwright.config.ts).
 const USER = 'test-admin'
@@ -188,6 +189,37 @@ test.describe('dishes', () => {
     await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
     await page.goto('/fr')
     await expect(page.locator('#brik-au-thon [data-price]')).toHaveText(/^6\sDT$/)
+  })
+
+  test('a photo is saved even when the crop frame touches the edge', async ({ page }) => {
+    await login(page)
+    await page.goto('/admin/plats?q=brik+au+thon')
+    await page.getByRole('link', { name: 'Brik au thon' }).click()
+    const photo = await sharp({
+      create: { width: 1600, height: 1200, channels: 3, background: '#c87a3c' },
+    })
+      .jpeg()
+      .toBuffer()
+    await page
+      .locator('#photo')
+      .setInputFiles({ name: 'brik.jpg', mimeType: 'image/jpeg', buffer: photo })
+    await expect(page.locator('[data-cropper] img')).toBeVisible()
+    // The browser rounds each value separately: left + width can overshoot by one pixel.
+    await page.evaluate(() => {
+      const values = { cropLeft: 400, cropTop: 0, cropWidth: 1201, cropHeight: 900 }
+      for (const [name, value] of Object.entries(values)) {
+        const input = document.querySelector<HTMLInputElement>(`input[name="${name}"]`)
+        if (input) input.value = String(value)
+      }
+    })
+    await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+    await expect(page.locator('[data-toast]')).toContainText('Plat enregistré')
+    await expect(page.locator('.photo-current')).toBeVisible()
+
+    // Put the test database back as it was.
+    await page.getByLabel('Retirer la photo').check()
+    await page.getByRole('button', { name: 'Enregistrer', exact: true }).click()
+    await expect(page.locator('.photo-current')).toHaveCount(0)
   })
 
   test('invalid input is rejected with a clear message', async ({ page }) => {
