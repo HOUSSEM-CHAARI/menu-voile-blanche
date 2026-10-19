@@ -1,16 +1,32 @@
 /**
  * Processed photos live in a local folder during development and in Vercel Blob
- * in production. Blob URLs are immutable public CDN URLs, so they can be stored
- * directly in the menu records and never depend on a serverless function disk.
+ * in production (a serverless function's disk is read-only).
+ *  - Public Blob store: files get immutable public CDN URLs, stored directly in the menu records.
+ *  - Private Blob store: files are served through /media by this app.
+ * The store's access is read from BLOB_ACCESS, or detected on the first upload.
  */
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
-import { del, list, put } from '@vercel/blob'
+import {
+  BlobError,
+  BlobRequestAbortedError,
+  BlobServiceNotAvailable,
+  BlobServiceRateLimited,
+  del,
+  get,
+  list,
+  put,
+  type BlobAccessType,
+} from '@vercel/blob'
 import { env } from './env'
 
 export const MEDIA_PREFIX = '/media/'
 const root = resolve(env.UPLOAD_DIR)
 const useBlob = Boolean(env.BLOB_READ_WRITE_TOKEN)
+let access: BlobAccessType | undefined = env.BLOB_ACCESS
+
+/** Thrown when photos cannot be stored at all: the message is meant for the owner. */
+export class StorageError extends Error {}
 
 /** Resolves a storage key inside UPLOAD_DIR, refusing anything that escapes it. */
 function pathFor(key: string): string {
@@ -22,15 +38,46 @@ function pathFor(key: string): string {
   return path
 }
 
+async function putBlob(key: string, data: Buffer, mode: BlobAccessType): Promise<string> {
+  const blob = await put(key, data, {
+    access: mode,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 31_536_000,
+  })
+  return mode === 'public' ? blob.url : `${MEDIA_PREFIX}${key}`
+}
+
 export async function putFile(key: string, data: Buffer): Promise<string> {
   if (useBlob) {
-    const blob = await put(key, data, {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      cacheControlMaxAge: 31_536_000,
-    })
-    return blob.url
+    if (access) return putBlob(key, data, access)
+    // Unknown store type: try public, and switch to private if the store refuses it.
+    try {
+      const url = await putBlob(key, data, 'public')
+      access = 'public'
+      return url
+    } catch (error) {
+      const transient =
+        error instanceof BlobServiceNotAvailable ||
+        error instanceof BlobServiceRateLimited ||
+        error instanceof BlobRequestAbortedError
+      if (!(error instanceof BlobError) || transient) throw error
+      try {
+        const url = await putBlob(key, data, 'private')
+        access = 'private'
+        console.warn('[storage] The Blob store refused public files: using private access.')
+        return url
+      } catch {
+        // Not an access problem: report what the public upload said.
+        throw error
+      }
+    }
+  }
+  if (process.env.VERCEL) {
+    throw new StorageError(
+      'Stockage des photos non configuré sur Vercel : connectez un Blob store au projet ' +
+        '(Storage → Blob) pour que BLOB_READ_WRITE_TOKEN existe, puis redéployez.',
+    )
   }
   const path = pathFor(key)
   await mkdir(dirname(path), { recursive: true })
@@ -39,8 +86,21 @@ export async function putFile(key: string, data: Buffer): Promise<string> {
 }
 
 export async function readStoredFile(key: string): Promise<Buffer | null> {
-  // Public Blob files are read by browsers directly, never proxied through /media.
-  if (useBlob) return null
+  if (useBlob) {
+    // Public Blob files are read by browsers directly; private ones are proxied here.
+    pathFor(key)
+    for (const mode of access ? [access] : (['private', 'public'] as const)) {
+      try {
+        const result = await get(key, { access: mode })
+        if (result?.statusCode === 200) {
+          return Buffer.from(await new Response(result.stream).arrayBuffer())
+        }
+      } catch {
+        // Try the other access mode, then give up (404).
+      }
+    }
+    return null
+  }
   try {
     return await readFile(pathFor(key))
   } catch {

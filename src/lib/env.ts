@@ -7,6 +7,8 @@ const schema = z.object({
   UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
   /** Set automatically by a connected Vercel Blob store in production. */
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  /** "public" or "private", as chosen when the Blob store was created. Detected when unset. */
+  BLOB_ACCESS: z.enum(['public', 'private']).optional(),
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
   NODE_ENV: z.string().optional(),

@@ -198,9 +198,13 @@ document.querySelector<HTMLElement>('[data-form-errors]')?.focus()
 
 /* ─── Photo: drop zone, automatic resizing, crop frame (4:3 dishes, 16:9 covers) ─ */
 
-/** Phone photos are reduced in the browser: faster upload, never over the 10 MB limit. */
-const MAX_SIDE = 2560
-const KEEP_AS_IS_BYTES = 6 * 1024 * 1024
+/**
+ * Phone photos are reduced in the browser: faster upload, and the whole form stays well under
+ * the 4.5 MB request limit of serverless hosts such as Vercel (the menu shows 1280 px at most).
+ */
+const MAX_SIDE = 2048
+const KEEP_AS_IS_BYTES = 2.5 * 1024 * 1024
+const TARGET_BYTES = 3 * 1024 * 1024
 
 async function preparePhoto(chosen: File): Promise<File> {
   let bitmap: ImageBitmap
@@ -224,9 +228,13 @@ async function preparePhoto(chosen: File): Promise<File> {
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
   bitmap.close()
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/jpeg', 0.9),
-  )
+  let blob: Blob | null = null
+  for (const quality of [0.86, 0.75, 0.6]) {
+    blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', quality),
+    )
+    if (!blob || blob.size <= TARGET_BYTES) break
+  }
   if (!blob) throw new Error('La photo n’a pas pu être préparée.')
   return new File([blob], `${chosen.name.replace(/\.[^.]+$/, '') || 'photo'}.jpg`, {
     type: 'image/jpeg',

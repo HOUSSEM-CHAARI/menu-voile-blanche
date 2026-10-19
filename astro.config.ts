@@ -11,7 +11,7 @@ export default defineConfig({
   output: 'server',
   // Keep the standalone Node server for local development, and build serverless
   // functions only when Vercel runs the production build.
-  adapter: process.env.VERCEL ? vercel() : node({ mode: 'standalone' }),
+  adapter: process.env.VERCEL ? vercel({ maxDuration: 60 }) : node({ mode: 'standalone' }),
   site: process.env.PUBLIC_BASE_URL ?? 'http://localhost:4321',
   trailingSlash: 'never',
   security: { checkOrigin: true },

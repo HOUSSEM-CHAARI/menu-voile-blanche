@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto'
 import sharp from 'sharp'
 import { clampCrop, type CropArea } from './crop'
-import { putFile, removeFiles } from './storage'
+import { putFile, removeFiles, StorageError } from './storage'
 import type { ImageMeta, ImageVariant } from './types'
 
 export type ImageKind = 'dish' | 'cover'
@@ -27,7 +27,10 @@ export type { CropArea }
 export function photoErrorMessage(error: unknown): string {
   if (error instanceof ImageError) return error.message
   console.error('[photo]', error)
-  return 'La photo n’a pas pu être traitée. Choisissez-la à nouveau ou essayez une autre photo (JPEG ou PNG).'
+  if (error instanceof StorageError) return error.message
+  // The technical cause is shown too (back office only): it is what a developer needs.
+  const detail = error instanceof Error ? error.message.slice(0, 200) : String(error)
+  return `La photo n’a pas pu être enregistrée. Choisissez-la à nouveau ou essayez une autre photo (JPEG ou PNG). Détail : ${detail}`
 }
 
 export async function processImage(
@@ -84,20 +87,27 @@ export async function processImage(
     jpg: [],
   }
 
-  for (const width of widths) {
-    const resized = sharp(master.data).resize({ width })
-    const [avif, webp, jpg] = await Promise.all([
-      resized.clone().avif({ quality: 52, effort: 4 }).toBuffer(),
-      resized.clone().webp({ quality: 74 }).toBuffer(),
-      resized.clone().jpeg({ quality: 78, mozjpeg: true, progressive: true }).toBuffer(),
-    ])
-    const variant = async (buffer: Buffer, ext: string): Promise<ImageVariant> => ({
-      width,
-      src: await putFile(`${key}/${width}.${ext}`, buffer),
-    })
-    meta.avif.push(await variant(avif, 'avif'))
-    meta.webp.push(await variant(webp, 'webp'))
-    meta.jpg.push(await variant(jpg, 'jpg'))
+  // Every size is encoded and stored in parallel: on a serverless host the uploads, not the
+  // encoding, take most of the time.
+  const sizes = await Promise.all(
+    widths.map(async (width) => {
+      const resized = sharp(master.data).resize({ width })
+      const [avif, webp, jpg] = await Promise.all([
+        resized.clone().avif({ quality: 52, effort: 4 }).toBuffer(),
+        resized.clone().webp({ quality: 74 }).toBuffer(),
+        resized.clone().jpeg({ quality: 78, mozjpeg: true, progressive: true }).toBuffer(),
+      ])
+      const variant = async (buffer: Buffer, ext: string): Promise<ImageVariant> => ({
+        width,
+        src: await putFile(`${key}/${width}.${ext}`, buffer),
+      })
+      return Promise.all([variant(avif, 'avif'), variant(webp, 'webp'), variant(jpg, 'jpg')])
+    }),
+  )
+  for (const [avif, webp, jpg] of sizes) {
+    meta.avif.push(avif)
+    meta.webp.push(webp)
+    meta.jpg.push(jpg)
   }
 
   const tiny = await sharp(master.data)
