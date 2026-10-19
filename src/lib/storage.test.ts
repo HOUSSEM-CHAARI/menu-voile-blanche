@@ -44,6 +44,17 @@ describe('putFile with Vercel Blob', () => {
     expect(put.mock.calls.map(accessOf)).toEqual(['public', 'private', 'private'])
   })
 
+  it('uses a store connected by id (OIDC) without a read-write token', async () => {
+    put.mockResolvedValue({ url: 'https://store.public.blob.vercel-storage.com/abc/160.jpg' })
+    const { putFile } = await load({
+      VERCEL: '1',
+      BLOB_STORE_ID: 'store_abc',
+      BLOB_ACCESS: 'private',
+    })
+    await expect(putFile('abc/160.jpg', Buffer.from('x'))).resolves.toBe('/media/abc/160.jpg')
+    expect(put.mock.calls.map(accessOf)).toEqual(['private'])
+  })
+
   it('explains the missing Blob store on Vercel instead of writing to a read-only disk', async () => {
     const { putFile, StorageError } = await load({ VERCEL: '1' })
     await expect(putFile('abc/160.jpg', Buffer.from('x'))).rejects.toBeInstanceOf(StorageError)

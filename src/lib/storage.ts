@@ -8,7 +8,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
 import {
-  BlobError,
   BlobRequestAbortedError,
   BlobServiceNotAvailable,
   BlobServiceRateLimited,
@@ -22,7 +21,9 @@ import { env } from './env'
 
 export const MEDIA_PREFIX = '/media/'
 const root = resolve(env.UPLOAD_DIR)
-const useBlob = Boolean(env.BLOB_READ_WRITE_TOKEN)
+// Older stores give a read-write token; newer ones give a store id and Vercel signs requests
+// itself (OIDC). The SDK reads either from the environment.
+const useBlob = Boolean(env.BLOB_READ_WRITE_TOKEN || env.BLOB_STORE_ID)
 let access: BlobAccessType | undefined = env.BLOB_ACCESS
 
 /** Thrown when photos cannot be stored at all: the message is meant for the owner. */
@@ -61,7 +62,7 @@ export async function putFile(key: string, data: Buffer): Promise<string> {
         error instanceof BlobServiceNotAvailable ||
         error instanceof BlobServiceRateLimited ||
         error instanceof BlobRequestAbortedError
-      if (!(error instanceof BlobError) || transient) throw error
+      if (transient) throw error
       try {
         const url = await putBlob(key, data, 'private')
         access = 'private'
@@ -76,7 +77,7 @@ export async function putFile(key: string, data: Buffer): Promise<string> {
   if (process.env.VERCEL) {
     throw new StorageError(
       'Stockage des photos non configuré sur Vercel : connectez un Blob store au projet ' +
-        '(Storage → Blob) pour que BLOB_READ_WRITE_TOKEN existe, puis redéployez.',
+        '(Storage → Blob) pour que BLOB_STORE_ID ou BLOB_READ_WRITE_TOKEN existe, puis redéployez.',
     )
   }
   const path = pathFor(key)
